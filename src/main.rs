@@ -1,4 +1,5 @@
 mod ast;
+mod parse;
 mod scan;
 
 use scan::scan;
@@ -17,5 +18,8 @@ fn main() {
     let file = &args[1];
     let text = std::fs::read_to_string(file).expect(&format!("Error: cant open file {}", file));
     let tokens = scan(text.chars().collect::<Vec<char>>());
-    println!("Tokens={:#?}", tokens);
+    match parse::parse(tokens) {
+        Some(ast) => println!("output:\n{}", ast),
+        None => eprintln!("parsing aborted due to errors"),
+    }
 }

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TokenKind {
     // Single-character tokens.
     LeftParen,
@@ -51,7 +51,7 @@ pub enum TokenKind {
     EOF,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[allow(unused)]
 pub struct Token {
     kind: TokenKind,
@@ -69,29 +69,70 @@ impl Token {
     pub fn new(kind: TokenKind, text: String, line: usize) -> Token {
         Token { kind, text, line }
     }
+    pub fn kind(&self) -> TokenKind {
+        self.kind
+    }
+    pub fn line(&self) -> usize {
+        self.line
+    }
 }
 
-trait AstNode: Display {}
+pub trait AstNode: Display {}
+pub type AstNodeRef = Box<dyn AstNode>;
 
-struct BinaryExpr {
+pub struct BinaryExpr {
     token: Token,
-    rexptr: Box<dyn AstNode>,
-    lexpr: Box<dyn AstNode>,
+    rexpr: AstNodeRef,
+    lexpr: AstNodeRef,
 }
-struct UnaryExpr {
+pub struct UnaryExpr {
     token: Token,
-    expr: Box<dyn AstNode>,
+    expr: AstNodeRef,
 }
-struct LiteralExpr {
+pub struct LiteralExpr {
     token: Token,
 }
-struct GroupExpr {
-    expr: Box<dyn AstNode>,
+pub struct GroupExpr {
+    expr: AstNodeRef,
+}
+
+pub struct Ast {
+    root: AstNodeRef,
+}
+
+impl BinaryExpr {
+    pub fn create(token: Token, lexpr: AstNodeRef, rexpr: AstNodeRef) -> AstNodeRef {
+        Box::new(BinaryExpr {
+            lexpr,
+            rexpr,
+            token,
+        })
+    }
+}
+impl UnaryExpr {
+    pub fn create(token: Token, expr: AstNodeRef) -> AstNodeRef {
+        Box::new(UnaryExpr { expr, token })
+    }
+}
+impl LiteralExpr {
+    pub fn create(token: Token) -> AstNodeRef {
+        Box::new(LiteralExpr { token })
+    }
+}
+impl GroupExpr {
+    pub fn create(expr: AstNodeRef) -> AstNodeRef {
+        Box::new(GroupExpr { expr })
+    }
+}
+impl Ast {
+    pub fn create(expr: AstNodeRef) -> Ast {
+        Ast { root: expr }
+    }
 }
 
 impl Display for BinaryExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({} {} {})", self.token, self.lexpr, self.rexptr)
+        write!(f, "({} {} {})", self.token, self.lexpr, self.rexpr)
     }
 }
 impl Display for UnaryExpr {
@@ -107,6 +148,11 @@ impl Display for GroupExpr {
 impl Display for LiteralExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.token)
+    }
+}
+impl Display for Ast {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.root)
     }
 }
 impl AstNode for BinaryExpr {}
