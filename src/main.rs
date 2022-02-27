@@ -1,76 +1,19 @@
 use std::{env::args, process::exit};
 
+mod ast;
+
+use ast::{Token, TokenKind};
+
 const SINGLE_CHARS: &[char] = &['+', '-', '*', '/', ',', '}', '{', ')', '(', '.', ';'];
 const DOUBLE_CHARS: &[char] = &['!', '=', '>', '<'];
-
-#[derive(Debug)]
-enum TokenKind {
-    // Single-character tokens.
-    LeftParen,
-    RightParen,
-    LeftBrace,
-    RightBrace,
-    Comma,
-    Dot,
-    Minus,
-    Plus,
-    Semicolon,
-    Slash,
-    Star,
-
-    // One or two character tokens.
-    Bang,
-    BangEqual,
-    Equal,
-    EqualEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-
-    // Literals.
-    Identifier,
-    String,
-    Number,
-
-    // Keywords.
-    And,
-    Class,
-    Else,
-    False,
-    Fun,
-    For,
-    If,
-    Nil,
-    Or,
-    Print,
-    Return,
-    Super,
-    This,
-    True,
-    Var,
-    While,
-
-    EOF,
-}
-
-#[derive(Debug)]
-#[allow(unused)]
-struct Token {
-    kind: TokenKind,
-    text: String,
-    line: usize,
-}
 
 fn lox_error(line: usize, text: &str) {
     println!("Error [line {}]: {}\n", line, text);
 }
 
 fn scan_single_char(c: char, line: usize) -> Token {
-    Token {
-        line,
-        text: String::from(c),
-        kind: match c {
+    Token::new(
+        match c {
             '+' => TokenKind::Plus,
             '-' => TokenKind::Minus,
             '*' => TokenKind::Star,
@@ -87,26 +30,27 @@ fn scan_single_char(c: char, line: usize) -> Token {
             '!' => TokenKind::Bang,
             _ => TokenKind::Comma, // ','
         },
-    }
+        String::from(c),
+        line,
+    )
 }
 
 fn scan_double_char(c: char, line: usize) -> Token {
-    Token {
-        line,
-        text: format!("{}=", String::from(c)),
-        kind: match c {
+    Token::new(
+        match c {
             '>' => TokenKind::GreaterEqual,
             '<' => TokenKind::LessEqual,
             '=' => TokenKind::EqualEqual,
             _ => TokenKind::BangEqual, // '!'
         },
-    }
+        format!("{}=", String::from(c)),
+        line,
+    )
 }
 
 fn scan_text(text: String, line: usize) -> Token {
-    Token {
-        line,
-        kind: match text.as_str() {
+    Token::new(
+        match text.as_str() {
             "this" => TokenKind::This,
             "true" => TokenKind::True,
             "false" => TokenKind::False,
@@ -126,7 +70,8 @@ fn scan_text(text: String, line: usize) -> Token {
             _ => TokenKind::Identifier,
         },
         text,
-    }
+        line,
+    )
 }
 
 fn scan(text: Vec<char>) -> Vec<Token> {
@@ -171,11 +116,7 @@ fn scan(text: Vec<char>) -> Vec<Token> {
                 buffer.push(text[cindex]);
                 cindex += 1;
             }
-            tokens.push(Token {
-                line,
-                text: buffer,
-                kind: TokenKind::Number,
-            });
+            tokens.push(Token::new(TokenKind::Number, buffer, line));
             cindex -= 1;
         } else if c == '"' {
             let mut buffer = String::from(c);
@@ -186,11 +127,8 @@ fn scan(text: Vec<char>) -> Vec<Token> {
                     break;
                 } else if text[cindex] == '"' {
                     buffer.push('"');
-                    tokens.push(Token {
-                        line,
-                        text: buffer,
-                        kind: TokenKind::String,
-                    });
+                    tokens.push(Token::new(TokenKind::String, buffer, line));
+
                     break;
                 } else {
                     buffer.push(text[cindex]);
@@ -201,11 +139,7 @@ fn scan(text: Vec<char>) -> Vec<Token> {
         }
         cindex += 1;
     }
-    tokens.push(Token {
-        text: String::new(),
-        kind: TokenKind::EOF,
-        line,
-    });
+    tokens.push(Token::new(TokenKind::EOF, String::new(), line));
     tokens
 }
 
