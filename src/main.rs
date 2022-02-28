@@ -1,15 +1,29 @@
 mod ast;
+mod interpret;
 mod parse;
 mod scan;
 
+use interpret::interpret;
+use parse::parse;
 use scan::scan;
-use std::{env::args, process::exit};
+use std::{
+    env::args,
+    io::{stdin, Write},
+    process::exit,
+};
 
 fn lox_error(line: usize, text: &str) {
     println!("Error [line {}]: {}\n", line, text);
 }
 
-fn main() {
+fn interpret_text(text: String) -> Option<interpret::Value> {
+    let tokens = scan(text.chars().collect::<Vec<char>>());
+    let ast = parse(tokens)?;
+    interpret(ast)
+}
+
+#[allow(unused)]
+fn interpret_file() {
     let args = args().collect::<Vec<String>>();
     if args.len() != 2 {
         eprintln!("help: lox [script]");
@@ -17,9 +31,30 @@ fn main() {
     }
     let file = &args[1];
     let text = std::fs::read_to_string(file).expect(&format!("Error: cant open file {}", file));
-    let tokens = scan(text.chars().collect::<Vec<char>>());
-    match parse::parse(tokens) {
-        Some(ast) => println!("output:\n{}", ast),
-        None => eprintln!("parsing aborted due to errors"),
+    if let Some(output) = interpret_text(text) {
+        println!("{}", output);
     }
+}
+
+fn repl() {
+    loop {
+        print!("> ");
+        std::io::stdout().flush().expect("failed to flush stdout");
+        let mut line = String::new();
+        let rsl = stdin()
+            .read_line(&mut line)
+            .expect("failed to read from stdin");
+        if rsl == 0 {
+            break;
+        }
+        if line.trim().len() > 0 {
+            if let Some(output) = interpret_text(line) {
+                println!("{}", output);
+            }
+        }
+    }
+}
+
+fn main() {
+    repl();
 }

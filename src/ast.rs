@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::interpret;
+
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TokenKind {
     // Single-character tokens.
@@ -75,9 +77,14 @@ impl Token {
     pub fn line(&self) -> usize {
         self.line
     }
+    pub fn text(&self) -> &String {
+        &self.text
+    }
 }
 
-pub trait AstNode: Display {}
+pub trait AstNode: Display {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()>;
+}
 pub type AstNodeRef = Box<dyn AstNode>;
 
 pub struct BinaryExpr {
@@ -108,25 +115,49 @@ impl BinaryExpr {
             token,
         })
     }
+    pub fn rexpr(&self) -> &AstNodeRef {
+        &self.rexpr
+    }
+    pub fn lexpr(&self) -> &AstNodeRef {
+        &self.lexpr
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 }
 impl UnaryExpr {
     pub fn create(token: Token, expr: AstNodeRef) -> AstNodeRef {
         Box::new(UnaryExpr { expr, token })
+    }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
     }
 }
 impl LiteralExpr {
     pub fn create(token: Token) -> AstNodeRef {
         Box::new(LiteralExpr { token })
     }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
 }
 impl GroupExpr {
     pub fn create(expr: AstNodeRef) -> AstNodeRef {
         Box::new(GroupExpr { expr })
     }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
 }
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
+    }
+    pub fn root(&self) -> &AstNodeRef {
+        &self.root
     }
 }
 
@@ -155,7 +186,23 @@ impl Display for Ast {
         write!(f, "{}", self.root)
     }
 }
-impl AstNode for BinaryExpr {}
-impl AstNode for UnaryExpr {}
-impl AstNode for GroupExpr {}
-impl AstNode for LiteralExpr {}
+impl AstNode for BinaryExpr {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_binary(self)
+    }
+}
+impl AstNode for UnaryExpr {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_unary(self)
+    }
+}
+impl AstNode for GroupExpr {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_group(self)
+    }
+}
+impl AstNode for LiteralExpr {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_literal(self)
+    }
+}
