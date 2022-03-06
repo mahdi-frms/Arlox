@@ -66,10 +66,11 @@ fn scan_text(text: String, line: usize) -> Token {
     )
 }
 
-pub fn scan(text: Vec<char>) -> Vec<Token> {
+pub fn scan(text: Vec<char>) -> Result<Vec<Token>, ()> {
     let mut line = 0_usize;
     let mut tokens: Vec<Token> = vec![];
     let mut cindex = 0;
+    let mut errflag = false;
     while cindex < text.len() {
         let c = text[cindex];
         if c == '\n' {
@@ -116,6 +117,7 @@ pub fn scan(text: Vec<char>) -> Vec<Token> {
             loop {
                 if cindex >= text.len() {
                     super::lox_error(line, "unbalanced quotes");
+                    errflag = true;
                     break;
                 } else if text[cindex] == '"' {
                     buffer.push('"');
@@ -128,9 +130,15 @@ pub fn scan(text: Vec<char>) -> Vec<Token> {
                 }
             }
         } else if c != ' ' && c != '\t' {
+            super::lox_error(line, "unsupported characters");
+            errflag = true;
         }
         cindex += 1;
     }
     tokens.push(Token::new(TokenKind::EOF, String::new(), line));
-    tokens
+    if errflag {
+        Err(())
+    } else {
+        Ok(tokens)
+    }
 }

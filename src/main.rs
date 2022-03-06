@@ -16,8 +16,8 @@ fn lox_error(line: usize, text: &str) {
     println!("Error [line {}]: {}\n", line, text);
 }
 
-fn interpret_text(text: String) -> Option<interpret::Value> {
-    let tokens = scan(text.chars().collect::<Vec<char>>());
+fn interpret_text(mut text: String) -> Option<interpret::Value> {
+    let tokens = scan(text.drain(..).collect::<Vec<char>>()).ok()?;
     let ast = parse(tokens)?;
     interpret(ast)
 }
