@@ -16,8 +16,10 @@ impl Parser {
     }
     fn parse(&mut self, tokens: Vec<Token>) -> Option<Ast> {
         self.tokens = tokens;
+        let rsl = self.parse_expression();
         self.current = 0;
-        match self.parse_expression() {
+        self.tokens.clear();
+        match rsl {
             Ok(node) => Some(Ast::create(node)),
             Err(_) => None,
         }
