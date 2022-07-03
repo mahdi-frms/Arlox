@@ -4,7 +4,7 @@ mod parse;
 mod scan;
 
 use interpret::interpret;
-use parse::parse;
+use parse::{parse_expresssion, parse_source};
 use scan::scan;
 use std::{
     env::args,
@@ -16,24 +16,28 @@ fn lox_error(line: usize, text: &str) {
     println!("Error [line {}]: {}\n", line, text);
 }
 
-fn interpret_text(mut text: String) -> Option<interpret::Value> {
+fn interpret_source(mut text: String) -> Option<interpret::Value> {
     let tokens = scan(text.drain(..).collect::<Vec<char>>()).ok()?;
-    let ast = parse(tokens)?;
+    let ast = parse_source(tokens)?;
     interpret(ast)
 }
 
-fn interpret_file() {
-    let args = args().collect::<Vec<String>>();
+fn interpret_line(mut text: String) -> Option<interpret::Value> {
+    let tokens = scan(text.drain(..).collect::<Vec<char>>()).ok()?;
+    let ast = parse_expresssion(tokens)?;
+    interpret(ast)
+}
+
+fn run_file(args: Vec<String>) {
     if args.len() != 2 {
         eprintln!("help: lox [script]");
         exit(1);
     }
     let file = &args[1];
     let text = std::fs::read_to_string(file).expect(&format!("Error: cant open file {}", file));
-    interpret_text(text);
+    interpret_source(text);
 }
 
-#[allow(unused)]
 fn repl() {
     loop {
         print!("> ");
@@ -46,7 +50,7 @@ fn repl() {
             break;
         }
         if line.trim().len() > 0 {
-            if let Some(output) = interpret_text(line) {
+            if let Some(output) = interpret_line(line) {
                 println!("{}", output);
             }
         }
@@ -54,5 +58,10 @@ fn repl() {
 }
 
 fn main() {
-    interpret_file();
+    let args = args().collect::<Vec<String>>();
+    if args.len() == 1 {
+        repl();
+    } else {
+        run_file(args);
+    }
 }

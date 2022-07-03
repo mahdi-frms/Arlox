@@ -15,9 +15,13 @@ impl Parser {
             tokens: vec![],
         }
     }
-    fn parse(&mut self, tokens: Vec<Token>) -> Option<Ast> {
+    fn parse(&mut self, tokens: Vec<Token>, expr: bool) -> Option<Ast> {
         self.tokens = tokens;
-        let rsl = self.parse_program();
+        let rsl = if expr {
+            self.parse_expression()
+        } else {
+            self.parse_program()
+        };
         self.current = 0;
         self.tokens.clear();
         match rsl {
@@ -152,7 +156,12 @@ impl Parser {
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Option<Ast> {
+pub fn parse_expresssion(tokens: Vec<Token>) -> Option<Ast> {
     let mut parser = Parser::new();
-    parser.parse(tokens)
+    parser.parse(tokens, true)
+}
+
+pub fn parse_source(tokens: Vec<Token>) -> Option<Ast> {
+    let mut parser = Parser::new();
+    parser.parse(tokens, false)
 }
