@@ -1,6 +1,8 @@
 use std::fmt::Display;
 
-use crate::ast::{Ast, BinaryExpr, GroupExpr, LiteralExpr, TokenKind, UnaryExpr};
+use crate::ast::{
+    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, TokenKind, UnaryExpr,
+};
 
 #[derive(PartialEq)]
 pub enum Value {
@@ -99,6 +101,21 @@ impl Interpretor {
             TokenKind::Plus => self.interpret_plus(node),
             _ => self.interpret_math(node),
         }
+    }
+    pub fn interpret_print_stmt(&self, node: &PrintStmt) -> Result<Value, ()> {
+        let value = node.expr().interpret(self)?;
+        println!("{}", value);
+        Ok(Value::Nil)
+    }
+    pub fn interpret_expr_stmt(&self, node: &ExprStmt) -> Result<Value, ()> {
+        node.expr().interpret(self)?;
+        Ok(Value::Nil)
+    }
+    pub fn interpret_program(&self, node: &Program) -> Result<Value, ()> {
+        for s in node.stmts() {
+            s.interpret(self)?;
+        }
+        Ok(Value::Nil)
     }
 }
 

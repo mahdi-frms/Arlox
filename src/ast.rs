@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::interpret;
+use crate::interpret::{self};
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum TokenKind {
@@ -102,6 +102,15 @@ pub struct LiteralExpr {
 pub struct GroupExpr {
     expr: AstNodeRef,
 }
+pub struct ExprStmt {
+    expr: AstNodeRef,
+}
+pub struct PrintStmt {
+    expr: AstNodeRef,
+}
+pub struct Program {
+    stmts: Vec<AstNodeRef>,
+}
 
 pub struct Ast {
     root: AstNodeRef,
@@ -152,6 +161,30 @@ impl GroupExpr {
         &self.expr
     }
 }
+impl ExprStmt {
+    pub fn create(expr: AstNodeRef) -> AstNodeRef {
+        Box::new(ExprStmt { expr })
+    }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
+}
+impl PrintStmt {
+    pub fn create(expr: AstNodeRef) -> AstNodeRef {
+        Box::new(PrintStmt { expr })
+    }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
+}
+impl Program {
+    pub fn create(stmts: Vec<AstNodeRef>) -> AstNodeRef {
+        Box::new(Program { stmts })
+    }
+    pub fn stmts(&self) -> &Vec<AstNodeRef> {
+        &self.stmts
+    }
+}
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -181,11 +214,31 @@ impl Display for LiteralExpr {
         write!(f, "{}", self.token)
     }
 }
+impl Display for ExprStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{};", self.expr)
+    }
+}
+impl Display for PrintStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{};", self.expr)
+    }
+}
+impl Display for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for s in self.stmts.iter() {
+            write!(f, "{}\n", s)?;
+        }
+        Ok(())
+    }
+}
+
 impl Display for Ast {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.root)
     }
 }
+
 impl AstNode for BinaryExpr {
     fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_binary(self)
@@ -204,5 +257,20 @@ impl AstNode for GroupExpr {
 impl AstNode for LiteralExpr {
     fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_literal(self)
+    }
+}
+impl AstNode for ExprStmt {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_expr_stmt(self)
+    }
+}
+impl AstNode for PrintStmt {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_print_stmt(self)
+    }
+}
+impl AstNode for Program {
+    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_program(self)
     }
 }

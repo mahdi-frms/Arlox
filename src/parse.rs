@@ -1,5 +1,6 @@
 use crate::ast::{
-    Ast, AstNodeRef, BinaryExpr, GroupExpr, LiteralExpr, Token, TokenKind, UnaryExpr,
+    Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, Token,
+    TokenKind, UnaryExpr,
 };
 
 struct Parser {
@@ -16,13 +17,32 @@ impl Parser {
     }
     fn parse(&mut self, tokens: Vec<Token>) -> Option<Ast> {
         self.tokens = tokens;
-        let rsl = self.parse_expression();
+        let rsl = self.parse_program();
         self.current = 0;
         self.tokens.clear();
         match rsl {
             Ok(node) => Some(Ast::create(node)),
             Err(_) => None,
         }
+    }
+    fn parse_program(&mut self) -> Result<AstNodeRef, ()> {
+        let mut stmts = vec![];
+        while !self.check(TokenKind::EOF) {
+            let stmt = self.parse_stmt()?;
+            stmts.push(stmt);
+        }
+        Ok(Program::create(stmts))
+    }
+    fn parse_stmt(&mut self) -> Result<AstNodeRef, ()> {
+        let node;
+        if self.check(TokenKind::Print) {
+            self.advance();
+            node = Ok(PrintStmt::create(self.parse_expression()?));
+        } else {
+            node = Ok(ExprStmt::create(self.parse_expression()?));
+        }
+        self.consume(TokenKind::Semicolon)?;
+        node
     }
     fn parse_expression(&mut self) -> Result<AstNodeRef, ()> {
         self.parse_equality()
@@ -111,7 +131,7 @@ impl Parser {
     }
     fn check(&mut self, kind: TokenKind) -> bool {
         if self.is_at_end() {
-            return false;
+            return kind == TokenKind::EOF;
         }
         self.peek().kind() == kind
     }

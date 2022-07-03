@@ -22,7 +22,6 @@ fn interpret_text(mut text: String) -> Option<interpret::Value> {
     interpret(ast)
 }
 
-#[allow(unused)]
 fn interpret_file() {
     let args = args().collect::<Vec<String>>();
     if args.len() != 2 {
@@ -31,11 +30,10 @@ fn interpret_file() {
     }
     let file = &args[1];
     let text = std::fs::read_to_string(file).expect(&format!("Error: cant open file {}", file));
-    if let Some(output) = interpret_text(text) {
-        println!("{}", output);
-    }
+    interpret_text(text);
 }
 
+#[allow(unused)]
 fn repl() {
     loop {
         print!("> ");
@@ -56,5 +54,5 @@ fn repl() {
 }
 
 fn main() {
-    repl();
+    interpret_file();
 }
