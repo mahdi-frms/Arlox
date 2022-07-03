@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program,
-        UnaryExpr,
+        UnaryExpr, VarDecl,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -39,10 +39,27 @@ impl Parser {
     fn parse_program(&mut self) -> Result<AstNodeRef, ()> {
         let mut stmts = vec![];
         while !self.check(TokenKind::EOF) {
-            let stmt = self.parse_stmt()?;
+            let stmt = self.parse_declaration()?;
             stmts.push(stmt);
         }
         Ok(Program::create(stmts))
+    }
+    fn parse_declaration(&mut self) -> Result<AstNodeRef, ()> {
+        if self.check(TokenKind::Var) {
+            return self.parse_var_decl();
+        }
+        return self.parse_stmt();
+    }
+    fn parse_var_decl(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        let id = self.consume(TokenKind::Identifier)?;
+        let mut expr = None;
+        if self.check(TokenKind::Equal) {
+            self.advance();
+            expr = Some(self.parse_expression()?);
+        }
+        self.consume(TokenKind::Semicolon)?;
+        Ok(VarDecl::create(id, expr))
     }
     fn parse_stmt(&mut self) -> Result<AstNodeRef, ()> {
         let node;
@@ -110,6 +127,7 @@ impl Parser {
             TokenKind::False,
             TokenKind::Number,
             TokenKind::String,
+            TokenKind::Identifier,
             TokenKind::Nil,
         ]) {
             Ok(LiteralExpr::create(self.previous()))

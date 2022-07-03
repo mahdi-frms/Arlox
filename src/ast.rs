@@ -4,7 +4,7 @@ use std::fmt::Display;
 use crate::interpret::{self};
 
 pub trait AstNode: Display {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()>;
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()>;
 }
 pub type AstNodeRef = Box<dyn AstNode>;
 
@@ -28,6 +28,10 @@ pub struct ExprStmt {
 }
 pub struct PrintStmt {
     expr: AstNodeRef,
+}
+pub struct VarDecl {
+    name: Token,
+    expr: Option<AstNodeRef>,
 }
 pub struct Program {
     stmts: Vec<AstNodeRef>,
@@ -98,6 +102,17 @@ impl PrintStmt {
         &self.expr
     }
 }
+impl VarDecl {
+    pub fn create(name: Token, expr: Option<AstNodeRef>) -> AstNodeRef {
+        Box::new(VarDecl { name, expr })
+    }
+    pub fn expr(&self) -> Option<&AstNodeRef> {
+        self.expr.as_ref()
+    }
+    pub fn name(&self) -> &Token {
+        &self.name
+    }
+}
 impl Program {
     pub fn create(stmts: Vec<AstNodeRef>) -> AstNodeRef {
         Box::new(Program { stmts })
@@ -145,6 +160,14 @@ impl Display for PrintStmt {
         write!(f, "{};", self.expr)
     }
 }
+impl Display for VarDecl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.expr() {
+            Some(e) => write!(f, "(var {}={});", self.name, e),
+            None => write!(f, "(var {});", self.name,),
+        }
+    }
+}
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for s in self.stmts.iter() {
@@ -161,37 +184,42 @@ impl Display for Ast {
 }
 
 impl AstNode for BinaryExpr {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_binary(self)
     }
 }
 impl AstNode for UnaryExpr {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_unary(self)
     }
 }
 impl AstNode for GroupExpr {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_group(self)
     }
 }
 impl AstNode for LiteralExpr {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_literal(self)
     }
 }
 impl AstNode for ExprStmt {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_expr_stmt(self)
     }
 }
 impl AstNode for PrintStmt {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_print_stmt(self)
     }
 }
+impl AstNode for VarDecl {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_var_decl(self)
+    }
+}
 impl AstNode for Program {
-    fn interpret(&self, interpretor: &interpret::Interpretor) -> Result<interpret::Value, ()> {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_program(self)
     }
 }
