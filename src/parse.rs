@@ -126,7 +126,7 @@ impl Parser {
         if self.check(kind) {
             Ok(self.advance())
         } else {
-            super::lox_error(self.peek().line(), &format!("expedted {:?}", kind));
+            super::lox_error(self.peek().line(), &format!("expedted {}", kind));
             Err(())
         }
     }

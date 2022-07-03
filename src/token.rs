@@ -65,6 +65,53 @@ impl Display for Token {
     }
 }
 
+impl Display for TokenKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match *self {
+            TokenKind::And => "keyword 'and'",
+            TokenKind::Or => "keyword 'or'",
+            TokenKind::Bang => "'!'",
+            TokenKind::Comma => "','",
+            TokenKind::LeftParen => "'('",
+            TokenKind::RightParen => "')'",
+            TokenKind::LeftBrace => "'{'",
+            TokenKind::RightBrace => "'}'",
+            TokenKind::Dot => "'.'",
+            TokenKind::Minus => "'-'",
+            TokenKind::Plus => "'+'",
+            TokenKind::Semicolon => "';'",
+            TokenKind::Slash => "'/'",
+            TokenKind::Star => "'*'",
+            TokenKind::BangEqual => "'!='",
+            TokenKind::Equal => "'='",
+            TokenKind::EqualEqual => "'=='",
+            TokenKind::Greater => "'>'",
+            TokenKind::GreaterEqual => "'>='",
+            TokenKind::Less => "'<'",
+            TokenKind::LessEqual => "'<='",
+            TokenKind::Identifier => "identifier",
+            TokenKind::String => "string literal",
+            TokenKind::Number => "numeric literal",
+            TokenKind::Class => "keyword 'class'",
+            TokenKind::Else => "keyword 'else'",
+            TokenKind::False => "keyword 'false'",
+            TokenKind::Fun => "keyword 'fun'",
+            TokenKind::For => "keyword 'for'",
+            TokenKind::If => "keyword 'if'",
+            TokenKind::Nil => "keyword 'nil'",
+            TokenKind::Print => "keyword 'print'",
+            TokenKind::Return => "keyword 'return'",
+            TokenKind::Super => "keyword 'super'",
+            TokenKind::This => "keyword 'this'",
+            TokenKind::True => "keyword 'true'",
+            TokenKind::Var => "keyword 'var'",
+            TokenKind::While => "keyword 'while'",
+            TokenKind::EOF => "keyword 'eof'",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 impl Token {
     pub fn new(kind: TokenKind, text: String, line: usize) -> Token {
         Token { kind, text, line }
