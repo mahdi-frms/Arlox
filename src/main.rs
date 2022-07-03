@@ -14,7 +14,7 @@ use std::{
 };
 
 fn lox_error(line: usize, text: &str) {
-    println!("Error [line {}]: {}\n", line, text);
+    println!("Error [line {}]: {}\n", line + 1, text);
 }
 
 fn interpret_source(mut text: String) -> Option<interpret::Value> {

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program,
-        UnaryExpr, VarDecl,
+        AssignExpr, Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt,
+        Program, UnaryExpr, VarDecl,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -73,7 +73,30 @@ impl Parser {
         node
     }
     fn parse_expression(&mut self) -> Result<AstNodeRef, ()> {
-        self.parse_equality()
+        self.parse_assignment()
+    }
+    fn parse_assignment(&mut self) -> Result<AstNodeRef, ()> {
+        let mut nodes = vec![self.parse_equality()?];
+        let mut lines = vec![self.peek().line()];
+        while self.check(TokenKind::Equal) {
+            let tkn = self.advance();
+            lines.push(tkn.line());
+            nodes.push(self.parse_equality()?);
+        }
+        let mut expr = nodes.pop().ok_or(())?;
+        lines.pop().ok_or(())?;
+        while nodes.len() > 0 {
+            let node = nodes.pop().ok_or(())?;
+            let line = lines.pop().ok_or(())?;
+            match node.identifier() {
+                Some(id) => expr = AssignExpr::create(id.clone(), expr),
+                None => {
+                    lox_error(line, "invalid l-value");
+                    return Err(());
+                }
+            }
+        }
+        Ok(expr)
     }
     fn parse_equality(&mut self) -> Result<AstNodeRef, ()> {
         let mut expr = self.parse_comparison()?;

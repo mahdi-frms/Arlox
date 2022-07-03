@@ -1,4 +1,4 @@
-use crate::token::TokenKind;
+use crate::{ast::AssignExpr, token::TokenKind};
 use std::collections::hash_map::HashMap;
 use std::fmt::Display;
 
@@ -56,6 +56,12 @@ impl Interpretor {
     }
     pub fn interpret_group(&mut self, node: &GroupExpr) -> Result<Value, ()> {
         node.expr().interpret(self)
+    }
+    pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
+        let value = node.expr().interpret(self)?;
+        self.env
+            .insert(node.variable().text().clone(), value.clone());
+        Ok(value)
     }
     pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
         if node.token().kind() == TokenKind::Bang {
