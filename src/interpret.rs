@@ -1,5 +1,6 @@
 use crate::{
     ast::{AssignExpr, Block},
+    lox_error,
     token::TokenKind,
 };
 use std::collections::hash_map::HashMap;
@@ -83,7 +84,13 @@ impl Interpretor {
             TokenKind::False => Ok(Value::Boolean(false)),
             TokenKind::Identifier => match self.env.get(node.token().text()) {
                 Some(v) => Ok(v.clone()),
-                None => Err(()),
+                None => {
+                    lox_error(
+                        node.token().line(),
+                        format!("undefind variable '{}'", node.token().text()).as_str(),
+                    );
+                    Err(())
+                }
             },
             _ => Err(()),
         }
