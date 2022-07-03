@@ -58,7 +58,7 @@ pub fn interpret(ast: Ast) -> Option<Value> {
 }
 
 impl Interpretor {
-    pub fn new() -> Interpretor {
+    fn new() -> Interpretor {
         Interpretor {
             env: Environment::new(),
         }
