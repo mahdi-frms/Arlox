@@ -84,7 +84,7 @@ impl Parser {
             nodes.push(self.parse_equality()?);
         }
         let mut expr = nodes.pop().ok_or(())?;
-        lines.pop().ok_or(())?;
+        lines.pop();
         while nodes.len() > 0 {
             let node = nodes.pop().ok_or(())?;
             let line = lines.pop().ok_or(())?;
