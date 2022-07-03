@@ -1,9 +1,10 @@
 use crate::{
     ast::{
-        Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, Token,
-        TokenKind, UnaryExpr,
+        Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program,
+        UnaryExpr,
     },
     lox_error,
+    token::{Token, TokenKind},
 };
 
 struct Parser {

@@ -1,4 +1,4 @@
-use crate::ast::{Token, TokenKind};
+use crate::token::{Token, TokenKind};
 
 const SINGLE_CHARS: &[char] = &['+', '-', '*', '/', ',', '}', '{', ')', '(', '.', ';'];
 const DOUBLE_CHARS: &[char] = &['!', '=', '>', '<'];

@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
+use crate::token::TokenKind;
+
 use crate::ast::{
-    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, TokenKind, UnaryExpr,
+    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, UnaryExpr,
 };
 
 #[derive(PartialEq)]

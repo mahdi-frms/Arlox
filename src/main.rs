@@ -2,6 +2,7 @@ mod ast;
 mod interpret;
 mod parse;
 mod scan;
+mod token;
 
 use interpret::interpret;
 use parse::{parse_expresssion, parse_source};
