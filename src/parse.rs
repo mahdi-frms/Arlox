@@ -1,6 +1,9 @@
-use crate::ast::{
-    Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, Token,
-    TokenKind, UnaryExpr,
+use crate::{
+    ast::{
+        Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, Token,
+        TokenKind, UnaryExpr,
+    },
+    lox_error,
 };
 
 struct Parser {
@@ -22,6 +25,9 @@ impl Parser {
         } else {
             self.parse_program()
         };
+        if expr && !self.is_at_end() {
+            lox_error(0, "unexpected end of expression")
+        }
         self.current = 0;
         self.tokens.clear();
         match rsl {
