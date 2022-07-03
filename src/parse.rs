@@ -125,7 +125,7 @@ impl Parser {
         if self.check(kind) {
             Ok(self.advance())
         } else {
-            super::lox_error(self.peek().line(), &format!("Unbalanced parentheses"));
+            super::lox_error(self.peek().line(), &format!("expedted {:?}", kind));
             Err(())
         }
     }
