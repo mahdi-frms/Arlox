@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        AssignExpr, Ast, AstNodeRef, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt,
-        Program, UnaryExpr, VarDecl,
+        AssignExpr, Ast, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, LiteralExpr,
+        PrintStmt, Program, UnaryExpr, VarDecl,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -66,11 +66,23 @@ impl Parser {
         if self.check(TokenKind::Print) {
             self.advance();
             node = Ok(PrintStmt::create(self.parse_expression()?));
+            self.consume(TokenKind::Semicolon)?;
+        } else if self.check(TokenKind::LeftBrace) {
+            node = self.parse_block();
         } else {
             node = Ok(ExprStmt::create(self.parse_expression()?));
+            self.consume(TokenKind::Semicolon)?;
         }
-        self.consume(TokenKind::Semicolon)?;
         node
+    }
+    fn parse_block(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        let mut decs = vec![];
+        while !self.check(TokenKind::RightBrace) {
+            decs.push(self.parse_declaration()?)
+        }
+        self.advance();
+        Ok(Block::create(decs))
     }
     fn parse_expression(&mut self) -> Result<AstNodeRef, ()> {
         self.parse_assignment()

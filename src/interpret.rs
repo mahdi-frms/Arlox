@@ -1,4 +1,7 @@
-use crate::{ast::AssignExpr, token::TokenKind};
+use crate::{
+    ast::{AssignExpr, Block},
+    token::TokenKind,
+};
 use std::collections::hash_map::HashMap;
 use std::fmt::Display;
 
@@ -14,8 +17,39 @@ pub enum Value {
     Nil,
 }
 
+struct Environment {
+    maps: Vec<HashMap<String, Value>>,
+}
+
+impl Environment {
+    fn new() -> Environment {
+        Environment {
+            maps: vec![HashMap::new()],
+        }
+    }
+    fn get(&self, name: &String) -> Option<Value> {
+        for m in self.maps.iter().rev() {
+            if let Some(v) = m.get(name) {
+                return Some(v.clone());
+            }
+        }
+        return None;
+    }
+    fn set(&mut self, name: &String, value: Value) {
+        if let Some(m) = self.maps.last_mut() {
+            m.insert(name.clone(), value);
+        }
+    }
+    fn enter(&mut self) {
+        self.maps.push(HashMap::new())
+    }
+    fn exit(&mut self) {
+        self.maps.pop();
+    }
+}
+
 pub struct Interpretor {
-    env: HashMap<String, Value>,
+    env: Environment,
 }
 
 pub fn interpret(ast: Ast) -> Option<Value> {
@@ -26,7 +60,7 @@ pub fn interpret(ast: Ast) -> Option<Value> {
 impl Interpretor {
     pub fn new() -> Interpretor {
         Interpretor {
-            env: HashMap::new(),
+            env: Environment::new(),
         }
     }
     pub fn interpret_literal(&self, node: &LiteralExpr) -> Result<Value, ()> {
@@ -59,8 +93,7 @@ impl Interpretor {
     }
     pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
         let value = node.expr().interpret(self)?;
-        self.env
-            .insert(node.variable().text().clone(), value.clone());
+        self.env.set(node.variable().text(), value.clone());
         Ok(value)
     }
     pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
@@ -136,7 +169,7 @@ impl Interpretor {
             Some(e) => e.interpret(self)?,
             None => Value::Nil,
         };
-        self.env.insert(node.name().text().clone(), value);
+        self.env.set(node.name().text(), value);
 
         Ok(Value::Nil)
     }
@@ -144,6 +177,14 @@ impl Interpretor {
         for s in node.stmts() {
             s.interpret(self)?;
         }
+        Ok(Value::Nil)
+    }
+    pub fn interpret_block(&mut self, node: &Block) -> Result<Value, ()> {
+        self.env.enter();
+        for s in node.decs() {
+            s.interpret(self)?;
+        }
+        self.env.exit();
         Ok(Value::Nil)
     }
 }

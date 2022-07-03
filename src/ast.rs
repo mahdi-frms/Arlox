@@ -41,6 +41,9 @@ pub struct AssignExpr {
 pub struct Program {
     stmts: Vec<AstNodeRef>,
 }
+pub struct Block {
+    decs: Vec<AstNodeRef>,
+}
 
 pub struct Ast {
     root: AstNodeRef,
@@ -137,6 +140,14 @@ impl Program {
         &self.stmts
     }
 }
+impl Block {
+    pub fn create(decs: Vec<AstNodeRef>) -> AstNodeRef {
+        Box::new(Block { decs })
+    }
+    pub fn decs(&self) -> &Vec<AstNodeRef> {
+        &self.decs
+    }
+}
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -187,6 +198,15 @@ impl Display for VarDecl {
             Some(e) => write!(f, "(var {}={});", self.name, e),
             None => write!(f, "(var {});", self.name,),
         }
+    }
+}
+impl Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let _ = write!(f, "{{");
+        for s in self.decs.iter() {
+            write!(f, "{}\n", s)?;
+        }
+        write!(f, "}}")
     }
 }
 impl Display for Program {
@@ -275,6 +295,14 @@ impl AstNode for VarDecl {
 impl AstNode for Program {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_program(self)
+    }
+    fn identifier(&self) -> Option<&Token> {
+        return None;
+    }
+}
+impl AstNode for Block {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_block(self)
     }
     fn identifier(&self) -> Option<&Token> {
         return None;
