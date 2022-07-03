@@ -174,7 +174,7 @@ impl Interpretor {
         Ok(Value::Nil)
     }
     pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
-        for s in node.stmts() {
+        for s in node.decs() {
             s.interpret(self)?;
         }
         Ok(Value::Nil)

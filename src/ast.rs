@@ -31,7 +31,7 @@ pub struct PrintStmt {
     expr: AstNodeRef,
 }
 pub struct VarDecl {
-    name: Token,
+    variable: Token,
     expr: Option<AstNodeRef>,
 }
 pub struct AssignExpr {
@@ -39,7 +39,7 @@ pub struct AssignExpr {
     expr: AstNodeRef,
 }
 pub struct Program {
-    stmts: Vec<AstNodeRef>,
+    decs: Vec<AstNodeRef>,
 }
 pub struct Block {
     decs: Vec<AstNodeRef>,
@@ -122,22 +122,22 @@ impl PrintStmt {
     }
 }
 impl VarDecl {
-    pub fn create(name: Token, expr: Option<AstNodeRef>) -> AstNodeRef {
-        Box::new(VarDecl { name, expr })
+    pub fn create(variable: Token, expr: Option<AstNodeRef>) -> AstNodeRef {
+        Box::new(VarDecl { variable, expr })
     }
     pub fn expr(&self) -> Option<&AstNodeRef> {
         self.expr.as_ref()
     }
     pub fn name(&self) -> &Token {
-        &self.name
+        &self.variable
     }
 }
 impl Program {
     pub fn create(stmts: Vec<AstNodeRef>) -> AstNodeRef {
-        Box::new(Program { stmts })
+        Box::new(Program { decs: stmts })
     }
-    pub fn stmts(&self) -> &Vec<AstNodeRef> {
-        &self.stmts
+    pub fn decs(&self) -> &Vec<AstNodeRef> {
+        &self.decs
     }
 }
 impl Block {
@@ -195,8 +195,8 @@ impl Display for AssignExpr {
 impl Display for VarDecl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.expr() {
-            Some(e) => write!(f, "(var {}={});", self.name, e),
-            None => write!(f, "(var {});", self.name,),
+            Some(e) => write!(f, "(var {}={});", self.variable, e),
+            None => write!(f, "(var {});", self.variable,),
         }
     }
 }
@@ -211,7 +211,7 @@ impl Display for Block {
 }
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for s in self.stmts.iter() {
+        for s in self.decs.iter() {
             write!(f, "{}\n", s)?;
         }
         Ok(())

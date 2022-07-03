@@ -37,12 +37,12 @@ impl Parser {
         }
     }
     fn parse_program(&mut self) -> Result<AstNodeRef, ()> {
-        let mut stmts = vec![];
+        let mut decs = vec![];
         while !self.check(TokenKind::EOF) {
             let stmt = self.parse_declaration()?;
-            stmts.push(stmt);
+            decs.push(stmt);
         }
-        Ok(Program::create(stmts))
+        Ok(Program::create(decs))
     }
     fn parse_declaration(&mut self) -> Result<AstNodeRef, ()> {
         if self.check(TokenKind::Var) {
