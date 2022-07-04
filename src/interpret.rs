@@ -161,6 +161,20 @@ impl Interpretor {
             }
         }
     }
+    pub fn interpret_and(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().interpret(self)?;
+        if !left.truth() {
+            return Ok(Value::Boolean(false));
+        }
+        node.rexpr().interpret(self)
+    }
+    pub fn interpret_or(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().interpret(self)?;
+        if left.truth() {
+            return Ok(Value::Boolean(true));
+        }
+        node.rexpr().interpret(self)
+    }
     pub fn interpret_binary(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
         match node.token().kind() {
             TokenKind::EqualEqual => Ok(Value::Boolean(
@@ -169,6 +183,8 @@ impl Interpretor {
             TokenKind::BangEqual => Ok(Value::Boolean(
                 node.lexpr().interpret(self) != node.rexpr().interpret(self),
             )),
+            TokenKind::Or => self.interpret_or(node),
+            TokenKind::And => self.interpret_and(node),
             TokenKind::Plus => self.interpret_plus(node),
             _ => self.interpret_math(node),
         }

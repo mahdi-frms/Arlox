@@ -103,12 +103,12 @@ impl Parser {
         self.parse_assignment()
     }
     fn parse_assignment(&mut self) -> Result<AstNodeRef, ()> {
-        let mut nodes = vec![self.parse_equality()?];
+        let mut nodes = vec![self.parse_logic_or()?];
         let mut lines = vec![self.peek().line()];
         while self.check(TokenKind::Equal) {
             let tkn = self.advance();
             lines.push(tkn.line());
-            nodes.push(self.parse_equality()?);
+            nodes.push(self.parse_logic_or()?);
         }
         let mut expr = nodes.pop().ok_or(())?;
         lines.pop();
@@ -124,6 +124,24 @@ impl Parser {
             }
         }
         Ok(expr)
+    }
+    fn parse_logic_or(&mut self) -> Result<AstNodeRef, ()> {
+        let mut lexpr = self.parse_logic_and()?;
+        while self.check(TokenKind::Or) {
+            let opr = self.advance();
+            let rexpr = self.parse_logic_and()?;
+            lexpr = BinaryExpr::create(opr, lexpr, rexpr);
+        }
+        Ok(lexpr)
+    }
+    fn parse_logic_and(&mut self) -> Result<AstNodeRef, ()> {
+        let mut lexpr = self.parse_equality()?;
+        while self.check(TokenKind::And) {
+            let opr = self.advance();
+            let rexpr = self.parse_equality()?;
+            lexpr = BinaryExpr::create(opr, lexpr, rexpr);
+        }
+        Ok(lexpr)
     }
     fn parse_equality(&mut self) -> Result<AstNodeRef, ()> {
         let mut expr = self.parse_comparison()?;
