@@ -28,24 +28,28 @@ impl Environment {
             maps: vec![HashMap::new()],
         }
     }
-    fn get(&self, name: &String) -> Option<Value> {
-        for m in self.maps.iter().rev() {
-            if let Some(v) = m.get(name) {
-                return Some(v.clone());
+    fn get(&mut self, name: &String) -> Option<&mut Value> {
+        for m in self.maps.iter_mut().rev() {
+            if let Some(v) = m.get_mut(name) {
+                return Some(v);
             }
         }
         return None;
     }
     fn set(&mut self, name: &String, value: Value) {
-        for m in self.maps.iter_mut().rev() {
-            if let Some(_) = m.get(name) {
-                m.insert(name.clone(), value);
-                return;
-            }
-        }
         if let Some(m) = self.maps.last_mut() {
             m.insert(name.clone(), value);
         }
+    }
+    fn assign(&mut self, name: &String, value: Value) {
+        if let Some(v) = self.get(name) {
+            *v = value;
+        } else {
+            self.set(name, value);
+        }
+    }
+    fn init(&mut self, name: &String, value: Value) {
+        self.set(name, value);
     }
     fn enter(&mut self) {
         self.maps.push(HashMap::new())
@@ -70,7 +74,7 @@ impl Interpretor {
             env: Environment::new(),
         }
     }
-    pub fn interpret_literal(&self, node: &LiteralExpr) -> Result<Value, ()> {
+    pub fn interpret_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
         match node.token().kind() {
             TokenKind::Nil => Ok(Value::Nil),
             TokenKind::Number => match node.token().text().parse::<f64>() {
@@ -106,7 +110,7 @@ impl Interpretor {
     }
     pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
         let value = node.expr().interpret(self)?;
-        self.env.set(node.variable().text(), value.clone());
+        self.env.assign(node.variable().text(), value.clone());
         Ok(value)
     }
     pub fn interpret_if_stmt(&mut self, node: &IfStmt) -> Result<Value, ()> {
@@ -215,7 +219,7 @@ impl Interpretor {
             Some(e) => e.interpret(self)?,
             None => Value::Nil,
         };
-        self.env.set(node.name().text(), value);
+        self.env.init(node.name().text(), value);
 
         Ok(Value::Nil)
     }
