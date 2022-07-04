@@ -49,6 +49,10 @@ pub struct IfStmt {
     stmt: AstNodeRef,
     elstmt: Option<AstNodeRef>,
 }
+pub struct WhileStmt {
+    expr: AstNodeRef,
+    stmt: AstNodeRef,
+}
 pub struct Ast {
     root: AstNodeRef,
 }
@@ -166,6 +170,17 @@ impl IfStmt {
         self.elstmt.as_ref()
     }
 }
+impl WhileStmt {
+    pub fn create(expr: AstNodeRef, stmt: AstNodeRef) -> AstNodeRef {
+        Box::new(WhileStmt { expr, stmt })
+    }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
+    pub fn stmt(&self) -> &AstNodeRef {
+        &self.stmt
+    }
+}
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -233,6 +248,11 @@ impl Display for IfStmt {
             Some(el) => write!(f, "(if {} => {} | {})\n", self.expr, self.stmt, el),
             None => write!(f, "(if {} => {})\n", self.expr, self.stmt),
         }
+    }
+}
+impl Display for WhileStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(while {} => {})\n", self.expr, self.stmt)
     }
 }
 impl Display for Program {
@@ -321,6 +341,14 @@ impl AstNode for VarDecl {
 impl AstNode for IfStmt {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_if_stmt(self)
+    }
+    fn identifier(&self) -> Option<&Token> {
+        return None;
+    }
+}
+impl AstNode for WhileStmt {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_while_stmt(self)
     }
     fn identifier(&self) -> Option<&Token> {
         return None;

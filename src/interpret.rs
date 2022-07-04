@@ -1,5 +1,5 @@
 use crate::{
-    ast::{AssignExpr, Block, IfStmt},
+    ast::{AssignExpr, Block, IfStmt, WhileStmt},
     lox_error,
     token::TokenKind,
 };
@@ -117,6 +117,12 @@ impl Interpretor {
             if let Some(elstmt) = node.elstmt() {
                 elstmt.interpret(self)?;
             }
+        }
+        Ok(Value::Nil)
+    }
+    pub fn interpret_while_stmt(&mut self, node: &WhileStmt) -> Result<Value, ()> {
+        while node.expr().interpret(self)?.truth() {
+            node.stmt().interpret(self)?;
         }
         Ok(Value::Nil)
     }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         AssignExpr, Ast, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, IfStmt, LiteralExpr,
-        PrintStmt, Program, UnaryExpr, VarDecl,
+        PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -65,6 +65,8 @@ impl Parser {
         let node;
         if self.check(TokenKind::If) {
             node = self.parse_if_stmt();
+        } else if self.check(TokenKind::While) {
+            node = self.parse_while_stmt();
         } else if self.check(TokenKind::Print) {
             self.advance();
             node = Ok(PrintStmt::create(self.parse_expression()?));
@@ -89,6 +91,14 @@ impl Parser {
             elstmt = Some(self.parse_stmt()?);
         }
         Ok(IfStmt::create(expr, stmt, elstmt))
+    }
+    fn parse_while_stmt(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        self.consume(TokenKind::LeftParen)?;
+        let expr = self.parse_expression()?;
+        self.consume(TokenKind::RightParen)?;
+        let stmt = self.parse_stmt()?;
+        Ok(WhileStmt::create(expr, stmt))
     }
     fn parse_block(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();
