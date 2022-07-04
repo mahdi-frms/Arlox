@@ -144,6 +144,7 @@ impl Scanner {
                 "false" => TokenKind::False,
                 "while" => TokenKind::While,
                 "for" => TokenKind::For,
+                "break" => TokenKind::Break,
                 "class" => TokenKind::Class,
                 "return" => TokenKind::Return,
                 "if" => TokenKind::If,

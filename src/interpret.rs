@@ -1,7 +1,7 @@
 use crate::{
-    ast::{AssignExpr, Block, IfStmt, WhileStmt},
+    ast::{AssignExpr, Block, BreakStmt, IfStmt, WhileStmt},
     lox_error,
-    token::TokenKind,
+    token::{Token, TokenKind},
 };
 use std::collections::hash_map::HashMap;
 use std::fmt::Display;
@@ -61,17 +61,25 @@ impl Environment {
 
 pub struct Interpretor {
     env: Environment,
+    breaking: Option<Token>,
 }
 
 pub fn interpret(ast: Ast) -> Option<Value> {
     let mut interpretor = Interpretor::new();
-    ast.root().interpret(&mut interpretor).ok()
+    let rsl = ast.root().interpret(&mut interpretor).ok();
+    if let Some(tkn) = interpretor.breaking {
+        lox_error(tkn.line(), "break statement out ot loop");
+        None
+    } else {
+        rsl
+    }
 }
 
 impl Interpretor {
     fn new() -> Interpretor {
         Interpretor {
             env: Environment::new(),
+            breaking: None,
         }
     }
     pub fn interpret_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
@@ -127,7 +135,15 @@ impl Interpretor {
     pub fn interpret_while_stmt(&mut self, node: &WhileStmt) -> Result<Value, ()> {
         while node.expr().interpret(self)?.truth() {
             node.stmt().interpret(self)?;
+            if let Some(_) = self.breaking {
+                self.breaking = None;
+                break;
+            }
         }
+        Ok(Value::Nil)
+    }
+    pub fn interpret_break_stmt(&mut self, node: &BreakStmt) -> Result<Value, ()> {
+        self.breaking = Some(node.token().clone());
         Ok(Value::Nil)
     }
     pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
@@ -226,6 +242,9 @@ impl Interpretor {
     pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
         for s in node.decs() {
             s.interpret(self)?;
+            if let Some(_) = self.breaking {
+                break;
+            }
         }
         Ok(Value::Nil)
     }
@@ -233,6 +252,9 @@ impl Interpretor {
         self.env.enter();
         for s in node.decs() {
             s.interpret(self)?;
+            if let Some(_) = self.breaking {
+                break;
+            }
         }
         self.env.exit();
         Ok(Value::Nil)

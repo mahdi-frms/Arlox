@@ -16,6 +16,7 @@ pub enum AstNodeKind {
     IfStmt,
     WhileStmt,
     AssignExpr,
+    BreakStmt,
 }
 
 pub trait AstNode: Display {
@@ -67,6 +68,9 @@ pub struct IfStmt {
 pub struct WhileStmt {
     expr: AstNodeRef,
     stmt: AstNodeRef,
+}
+pub struct BreakStmt {
+    token: Token,
 }
 pub struct Ast {
     root: AstNodeRef,
@@ -196,6 +200,15 @@ impl WhileStmt {
         &self.stmt
     }
 }
+
+impl BreakStmt {
+    pub fn create(token: Token) -> AstNodeRef {
+        Box::new(BreakStmt { token })
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
+}
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -268,6 +281,11 @@ impl Display for IfStmt {
 impl Display for WhileStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "(while {} => {})\n", self.expr, self.stmt)
+    }
+}
+impl Display for BreakStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "break")
     }
 }
 impl Display for Program {
@@ -363,6 +381,14 @@ impl AstNode for WhileStmt {
     }
     fn kind(&self) -> AstNodeKind {
         AstNodeKind::WhileStmt
+    }
+}
+impl AstNode for BreakStmt {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_break_stmt(self)
+    }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::BreakStmt
     }
 }
 impl AstNode for Program {

@@ -37,6 +37,7 @@ pub enum TokenKind {
     False,
     Fun,
     For,
+    Break,
     If,
     Nil,
     Or,
@@ -106,6 +107,7 @@ impl Display for TokenKind {
             TokenKind::True => "keyword 'true'",
             TokenKind::Var => "keyword 'var'",
             TokenKind::While => "keyword 'while'",
+            TokenKind::Break => "keyword 'break'",
             TokenKind::EOF => "keyword 'eof'",
         };
         write!(f, "{}", s)
