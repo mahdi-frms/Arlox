@@ -12,6 +12,25 @@ struct Parser {
     tokens: Vec<Token>,
 }
 
+fn desugar_for(
+    initialize: Option<AstNodeRef>,
+    condition: Option<AstNodeRef>,
+    increment: Option<AstNodeRef>,
+    stmt: AstNodeRef,
+) -> AstNodeRef {
+    let mut stmt = stmt;
+    let condition = condition
+        .unwrap_or_else(|| LiteralExpr::create(Token::new(TokenKind::True, "true".to_string(), 0)));
+    if let Some(inc) = increment {
+        stmt = Block::create(vec![stmt, inc]);
+    }
+    let mut whloop = WhileStmt::create(condition, stmt);
+    if let Some(init) = initialize {
+        whloop = Block::create(vec![init, whloop]);
+    }
+    whloop
+}
+
 impl Parser {
     fn new() -> Parser {
         Parser {
@@ -67,6 +86,8 @@ impl Parser {
             node = self.parse_if_stmt();
         } else if self.check(TokenKind::While) {
             node = self.parse_while_stmt();
+        } else if self.check(TokenKind::For) {
+            node = self.parse_for_stmt();
         } else if self.check(TokenKind::Print) {
             self.advance();
             node = Ok(PrintStmt::create(self.parse_expression()?));
@@ -99,6 +120,37 @@ impl Parser {
         self.consume(TokenKind::RightParen)?;
         let stmt = self.parse_stmt()?;
         Ok(WhileStmt::create(expr, stmt))
+    }
+    fn parse_for_stmt(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        self.consume(TokenKind::LeftParen)?;
+
+        let initialize;
+        if self.check(TokenKind::Semicolon) {
+            initialize = None;
+            self.consume(TokenKind::Semicolon)?;
+        } else if self.check(TokenKind::Var) {
+            initialize = Some(self.parse_var_decl()?);
+        } else {
+            initialize = Some(self.parse_expression()?);
+            self.consume(TokenKind::Semicolon)?;
+        }
+
+        let mut condition = None;
+        if !self.check(TokenKind::Semicolon) {
+            condition = Some(self.parse_expression()?);
+        }
+        self.consume(TokenKind::Semicolon)?;
+
+        let mut increment = None;
+        if !self.check(TokenKind::RightParen) {
+            increment = Some(self.parse_expression()?);
+        }
+
+        self.consume(TokenKind::RightParen)?;
+        let stmt = self.parse_stmt()?;
+
+        Ok(desugar_for(initialize, condition, increment, stmt))
     }
     fn parse_block(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();
