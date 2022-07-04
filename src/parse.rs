@@ -1,7 +1,7 @@
 use crate::{
     ast::{
-        AssignExpr, Ast, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, IfStmt, LiteralExpr,
-        PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
+        AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, IfStmt,
+        LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -177,9 +177,17 @@ impl Parser {
         while nodes.len() > 0 {
             let node = nodes.pop().ok_or(())?;
             let line = lines.pop().ok_or(())?;
-            match node.identifier() {
-                Some(id) => expr = AssignExpr::create(id.clone(), expr),
-                None => {
+            match node.kind() {
+                AstNodeKind::LiteralExpr(tkn) => {
+                    expr = match tkn.kind() {
+                        TokenKind::Identifier => AssignExpr::create(tkn.clone(), expr),
+                        _ => {
+                            lox_error(line, "invalid l-value");
+                            return Err(());
+                        }
+                    }
+                }
+                _ => {
                     lox_error(line, "invalid l-value");
                     return Err(());
                 }

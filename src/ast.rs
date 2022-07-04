@@ -1,11 +1,26 @@
-use crate::token::{Token, TokenKind};
+use crate::token::Token;
 use std::fmt::Display;
 
 use crate::interpret::{self};
 
+pub enum AstNodeKind {
+    BinaryExpr,
+    UnaryExpr,
+    GroupExpr,
+    LiteralExpr(Token),
+    ExprStmt,
+    PrintStmt,
+    VarDecl,
+    Block,
+    Program,
+    IfStmt,
+    WhileStmt,
+    AssignExpr,
+}
+
 pub trait AstNode: Display {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()>;
-    fn identifier(&self) -> Option<&Token>;
+    fn kind(&self) -> AstNodeKind;
 }
 pub type AstNodeRef = Box<dyn AstNode>;
 
@@ -274,99 +289,95 @@ impl AstNode for BinaryExpr {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_binary(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::BinaryExpr
     }
 }
 impl AstNode for UnaryExpr {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_unary(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::UnaryExpr
     }
 }
 impl AstNode for GroupExpr {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_group(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::GroupExpr
     }
 }
 impl AstNode for AssignExpr {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_assignment(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::AssignExpr
     }
 }
 impl AstNode for LiteralExpr {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_literal(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        if self.token.kind() == TokenKind::Identifier {
-            Some(&self.token)
-        } else {
-            None
-        }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::LiteralExpr(self.token.clone())
     }
 }
 impl AstNode for ExprStmt {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_expr_stmt(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::ExprStmt
     }
 }
 impl AstNode for PrintStmt {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_print_stmt(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::PrintStmt
     }
 }
 impl AstNode for VarDecl {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_var_decl(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::VarDecl
     }
 }
 impl AstNode for IfStmt {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_if_stmt(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::IfStmt
     }
 }
 impl AstNode for WhileStmt {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_while_stmt(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::WhileStmt
     }
 }
 impl AstNode for Program {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_program(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::Program
     }
 }
 impl AstNode for Block {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_block(self)
     }
-    fn identifier(&self) -> Option<&Token> {
-        return None;
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::Block
     }
 }
