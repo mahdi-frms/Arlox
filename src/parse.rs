@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        AssignExpr, Ast, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, LiteralExpr,
+        AssignExpr, Ast, AstNodeRef, BinaryExpr, Block, ExprStmt, GroupExpr, IfStmt, LiteralExpr,
         PrintStmt, Program, UnaryExpr, VarDecl,
     },
     lox_error,
@@ -63,7 +63,9 @@ impl Parser {
     }
     fn parse_stmt(&mut self) -> Result<AstNodeRef, ()> {
         let node;
-        if self.check(TokenKind::Print) {
+        if self.check(TokenKind::If) {
+            node = self.parse_if_stmt();
+        } else if self.check(TokenKind::Print) {
             self.advance();
             node = Ok(PrintStmt::create(self.parse_expression()?));
             self.consume(TokenKind::Semicolon)?;
@@ -74,6 +76,19 @@ impl Parser {
             self.consume(TokenKind::Semicolon)?;
         }
         node
+    }
+    fn parse_if_stmt(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        self.consume(TokenKind::LeftParen)?;
+        let expr = self.parse_expression()?;
+        self.consume(TokenKind::RightParen)?;
+        let stmt = self.parse_stmt()?;
+        let mut elstmt = None;
+        if self.check(TokenKind::Else) {
+            self.advance();
+            elstmt = Some(self.parse_stmt()?);
+        }
+        Ok(IfStmt::create(expr, stmt, elstmt))
     }
     fn parse_block(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();

@@ -1,5 +1,5 @@
 use crate::{
-    ast::{AssignExpr, Block},
+    ast::{AssignExpr, Block, IfStmt},
     lox_error,
     token::TokenKind,
 };
@@ -102,6 +102,17 @@ impl Interpretor {
         let value = node.expr().interpret(self)?;
         self.env.set(node.variable().text(), value.clone());
         Ok(value)
+    }
+    pub fn interpret_if_stmt(&mut self, node: &IfStmt) -> Result<Value, ()> {
+        let condition = node.expr().interpret(self)?;
+        if condition.truth() {
+            node.stmt().interpret(self)?;
+        } else {
+            if let Some(elstmt) = node.elstmt() {
+                elstmt.interpret(self)?;
+            }
+        }
+        Ok(Value::Nil)
     }
     pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
         if node.token().kind() == TokenKind::Bang {

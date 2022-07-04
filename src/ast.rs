@@ -44,7 +44,11 @@ pub struct Program {
 pub struct Block {
     decs: Vec<AstNodeRef>,
 }
-
+pub struct IfStmt {
+    expr: AstNodeRef,
+    stmt: AstNodeRef,
+    elstmt: Option<AstNodeRef>,
+}
 pub struct Ast {
     root: AstNodeRef,
 }
@@ -148,6 +152,20 @@ impl Block {
         &self.decs
     }
 }
+impl IfStmt {
+    pub fn create(expr: AstNodeRef, stmt: AstNodeRef, elstmt: Option<AstNodeRef>) -> AstNodeRef {
+        Box::new(IfStmt { expr, stmt, elstmt })
+    }
+    pub fn expr(&self) -> &AstNodeRef {
+        &self.expr
+    }
+    pub fn stmt(&self) -> &AstNodeRef {
+        &self.stmt
+    }
+    pub fn elstmt(&self) -> Option<&AstNodeRef> {
+        self.elstmt.as_ref()
+    }
+}
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -207,6 +225,14 @@ impl Display for Block {
             write!(f, "{}\n", s)?;
         }
         write!(f, "}}")
+    }
+}
+impl Display for IfStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.elstmt() {
+            Some(el) => write!(f, "(if {} => {} | {})\n", self.expr, self.stmt, el),
+            None => write!(f, "(if {} => {})\n", self.expr, self.stmt),
+        }
     }
 }
 impl Display for Program {
@@ -287,6 +313,14 @@ impl AstNode for PrintStmt {
 impl AstNode for VarDecl {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_var_decl(self)
+    }
+    fn identifier(&self) -> Option<&Token> {
+        return None;
+    }
+}
+impl AstNode for IfStmt {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_if_stmt(self)
     }
     fn identifier(&self) -> Option<&Token> {
         return None;
