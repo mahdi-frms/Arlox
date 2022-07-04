@@ -37,6 +37,12 @@ impl Environment {
         return None;
     }
     fn set(&mut self, name: &String, value: Value) {
+        for m in self.maps.iter_mut().rev() {
+            if let Some(_) = m.get(name) {
+                m.insert(name.clone(), value);
+                return;
+            }
+        }
         if let Some(m) = self.maps.last_mut() {
             m.insert(name.clone(), value);
         }
