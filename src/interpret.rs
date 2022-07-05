@@ -1,6 +1,7 @@
 use crate::{
     ast::{AssignExpr, Block, BreakStmt, FunCall, IfStmt, WhileStmt},
     lox_error,
+    native::{all_natives, NativeFunction},
     token::{Token, TokenKind},
 };
 use std::collections::hash_map::HashMap;
@@ -15,8 +16,7 @@ pub enum Value {
     Number(f64),
     String(String),
     Boolean(bool),
-    #[allow(dead_code)]
-    NativeFun(fn(Vec<Value>) -> Result<Value, ()>),
+    NativeFun(NativeFunction),
     Nil,
 }
 
@@ -38,19 +38,19 @@ impl Environment {
         }
         return None;
     }
-    fn set(&mut self, name: &String, value: Value) {
+    fn set(&mut self, name: String, value: Value) {
         if let Some(m) = self.maps.last_mut() {
-            m.insert(name.clone(), value);
+            m.insert(name, value);
         }
     }
-    fn assign(&mut self, name: &String, value: Value) {
-        if let Some(v) = self.get(name) {
+    fn assign(&mut self, name: String, value: Value) {
+        if let Some(v) = self.get(&name) {
             *v = value;
         } else {
             self.set(name, value);
         }
     }
-    fn init(&mut self, name: &String, value: Value) {
+    fn init(&mut self, name: String, value: Value) {
         self.set(name, value);
     }
     fn enter(&mut self) {
@@ -68,6 +68,12 @@ pub struct Interpretor {
 
 pub fn interpret(ast: Ast) -> Option<Value> {
     let mut interpretor = Interpretor::new();
+    for nf in all_natives() {
+        interpretor
+            .env
+            .init(nf.name().clone(), Value::NativeFun(nf));
+    }
+
     let rsl = ast.root().interpret(&mut interpretor).ok();
     if let Some(tkn) = interpretor.breaking {
         lox_error(tkn.line(), "break statement out ot loop");
@@ -120,7 +126,8 @@ impl Interpretor {
     }
     pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
         let value = node.expr().interpret(self)?;
-        self.env.assign(node.variable().text(), value.clone());
+        self.env
+            .assign(node.variable().text().clone(), value.clone());
         Ok(value)
     }
     pub fn interpret_if_stmt(&mut self, node: &IfStmt) -> Result<Value, ()> {
@@ -237,7 +244,7 @@ impl Interpretor {
             Some(e) => e.interpret(self)?,
             None => Value::Nil,
         };
-        self.env.init(node.name().text(), value);
+        self.env.init(node.name().text().clone(), value);
 
         Ok(Value::Nil)
     }
@@ -255,7 +262,7 @@ impl Interpretor {
         for a in node.args() {
             args.push(a.interpret(self)?);
         }
-        Ok(callee(args)?)
+        Ok(callee.func()(args)?)
     }
     pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
         for s in node.decs() {
