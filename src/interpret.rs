@@ -1,7 +1,7 @@
 use crate::{
-    ast::{AssignExpr, Block, BreakStmt, FunCall, IfStmt, WhileStmt},
+    ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, IfStmt, WhileStmt},
+    function::{all_natives, Function, Implementation},
     lox_error,
-    native::{all_natives, NativeFunction},
     token::{Token, TokenKind},
 };
 use std::collections::hash_map::HashMap;
@@ -16,7 +16,7 @@ pub enum Value {
     Number(f64),
     String(String),
     Boolean(bool),
-    NativeFun(NativeFunction),
+    Function(Function),
     Nil,
 }
 
@@ -69,9 +69,7 @@ pub struct Interpretor {
 pub fn interpret(ast: Ast) -> Option<Value> {
     let mut interpretor = Interpretor::new();
     for nf in all_natives() {
-        interpretor
-            .env
-            .init(nf.name().clone(), Value::NativeFun(nf));
+        interpretor.env.init(nf.name().clone(), Value::Function(nf));
     }
 
     let rsl = ast.root().interpret(&mut interpretor).ok();
@@ -248,24 +246,36 @@ impl Interpretor {
 
         Ok(Value::Nil)
     }
+    pub fn interpret_fun_decl(&mut self, node: &FunDecl) -> Result<Value, ()> {
+        let name = node.name().text().clone();
+        self.env.init(
+            name.clone(),
+            Value::Function(Function::create(
+                name.clone(),
+                Implementation::LoxImpl(node.block().clone()),
+                node.args().iter().map(|t| t.text().clone()).collect(),
+            )),
+        );
+        Ok(Value::Nil)
+    }
     pub fn interpret_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
         let line = node.line();
         let callee = node.callee().interpret(self)?;
         let callee = match callee {
-            Value::NativeFun(f) => f,
+            Value::Function(fun) => fun,
             _ => {
                 lox_error(line, format!("{} is not callable", callee).as_str());
                 return Err(());
             }
         };
-        if callee.param_count() != -1 && callee.param_count() != node.args().len() as isize {
+        if callee.params().len() != node.args().len() {
             lox_error(
                 line,
                 format!(
                     "invalid number of arguments ({}) passed to function {} which takes {} params",
                     node.args().len(),
                     callee.name(),
-                    callee.param_count(),
+                    callee.params().len(),
                 )
                 .as_str(),
             );
@@ -275,8 +285,20 @@ impl Interpretor {
         for a in node.args() {
             args.push(a.interpret(self)?);
         }
-        Ok(callee.func()(args)?)
+        match callee.code() {
+            Implementation::NativeImpl(nf) => Ok(nf(args)?),
+            Implementation::LoxImpl(lf) => {
+                self.env.enter();
+                for (p, a) in callee.params().iter().zip(args.iter()) {
+                    self.env.init(p.clone(), a.clone())
+                }
+                let rsl = lf.interpret(self)?;
+                self.env.exit();
+                Ok(rsl)
+            }
+        }
     }
+
     pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
         for s in node.decs() {
             s.interpret(self)?;
@@ -316,7 +338,10 @@ impl Display for Value {
             Value::String(s) => s.clone(),
             Value::Nil => String::from("NIL"),
             Value::Boolean(b) => b.to_string(),
-            Value::NativeFun(_) => "[Native Function]".to_string(),
+            Value::Function(f) => match f.code() {
+                Implementation::NativeImpl(_) => "[Native Function]".to_string(),
+                Implementation::LoxImpl(_) => "[Function]".to_string(),
+            },
         };
         write!(f, "{}", rep)
     }

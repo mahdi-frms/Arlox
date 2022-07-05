@@ -1,5 +1,6 @@
 use crate::token::Token;
 use std::fmt::Display;
+use std::sync::Arc;
 
 use crate::interpret::{self};
 
@@ -18,13 +19,14 @@ pub enum AstNodeKind {
     AssignExpr,
     BreakStmt,
     FunCall,
+    FunDecl,
 }
 
 pub trait AstNode: Display {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()>;
     fn kind(&self) -> AstNodeKind;
 }
-pub type AstNodeRef = Box<dyn AstNode>;
+pub type AstNodeRef = Arc<dyn AstNode>;
 
 pub struct BinaryExpr {
     token: Token,
@@ -78,13 +80,19 @@ pub struct FunCall {
     callee: AstNodeRef,
     args: Vec<AstNodeRef>,
 }
+pub struct FunDecl {
+    name: Token,
+    args: Vec<Token>,
+    block: AstNodeRef,
+}
+
 pub struct Ast {
     root: AstNodeRef,
 }
 
 impl BinaryExpr {
     pub fn create(token: Token, lexpr: AstNodeRef, rexpr: AstNodeRef) -> AstNodeRef {
-        Box::new(BinaryExpr {
+        Arc::new(BinaryExpr {
             lexpr,
             rexpr,
             token,
@@ -102,7 +110,7 @@ impl BinaryExpr {
 }
 impl UnaryExpr {
     pub fn create(token: Token, expr: AstNodeRef) -> AstNodeRef {
-        Box::new(UnaryExpr { expr, token })
+        Arc::new(UnaryExpr { expr, token })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -113,7 +121,7 @@ impl UnaryExpr {
 }
 impl LiteralExpr {
     pub fn create(token: Token) -> AstNodeRef {
-        Box::new(LiteralExpr { token })
+        Arc::new(LiteralExpr { token })
     }
     pub fn token(&self) -> &Token {
         &self.token
@@ -121,7 +129,7 @@ impl LiteralExpr {
 }
 impl GroupExpr {
     pub fn create(expr: AstNodeRef) -> AstNodeRef {
-        Box::new(GroupExpr { expr })
+        Arc::new(GroupExpr { expr })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -129,7 +137,7 @@ impl GroupExpr {
 }
 impl AssignExpr {
     pub fn create(variable: Token, expr: AstNodeRef) -> AstNodeRef {
-        Box::new(AssignExpr { variable, expr })
+        Arc::new(AssignExpr { variable, expr })
     }
     pub fn variable(&self) -> &Token {
         &self.variable
@@ -140,7 +148,7 @@ impl AssignExpr {
 }
 impl ExprStmt {
     pub fn create(expr: AstNodeRef) -> AstNodeRef {
-        Box::new(ExprStmt { expr })
+        Arc::new(ExprStmt { expr })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -148,7 +156,7 @@ impl ExprStmt {
 }
 impl PrintStmt {
     pub fn create(expr: AstNodeRef) -> AstNodeRef {
-        Box::new(PrintStmt { expr })
+        Arc::new(PrintStmt { expr })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -156,7 +164,7 @@ impl PrintStmt {
 }
 impl VarDecl {
     pub fn create(variable: Token, expr: Option<AstNodeRef>) -> AstNodeRef {
-        Box::new(VarDecl { variable, expr })
+        Arc::new(VarDecl { variable, expr })
     }
     pub fn expr(&self) -> Option<&AstNodeRef> {
         self.expr.as_ref()
@@ -167,7 +175,7 @@ impl VarDecl {
 }
 impl Program {
     pub fn create(stmts: Vec<AstNodeRef>) -> AstNodeRef {
-        Box::new(Program { decs: stmts })
+        Arc::new(Program { decs: stmts })
     }
     pub fn decs(&self) -> &Vec<AstNodeRef> {
         &self.decs
@@ -175,7 +183,7 @@ impl Program {
 }
 impl Block {
     pub fn create(decs: Vec<AstNodeRef>) -> AstNodeRef {
-        Box::new(Block { decs })
+        Arc::new(Block { decs })
     }
     pub fn decs(&self) -> &Vec<AstNodeRef> {
         &self.decs
@@ -183,7 +191,7 @@ impl Block {
 }
 impl IfStmt {
     pub fn create(expr: AstNodeRef, stmt: AstNodeRef, elstmt: Option<AstNodeRef>) -> AstNodeRef {
-        Box::new(IfStmt { expr, stmt, elstmt })
+        Arc::new(IfStmt { expr, stmt, elstmt })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -197,7 +205,7 @@ impl IfStmt {
 }
 impl WhileStmt {
     pub fn create(expr: AstNodeRef, stmt: AstNodeRef) -> AstNodeRef {
-        Box::new(WhileStmt { expr, stmt })
+        Arc::new(WhileStmt { expr, stmt })
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
@@ -208,7 +216,7 @@ impl WhileStmt {
 }
 impl BreakStmt {
     pub fn create(token: Token) -> AstNodeRef {
-        Box::new(BreakStmt { token })
+        Arc::new(BreakStmt { token })
     }
     pub fn token(&self) -> &Token {
         &self.token
@@ -216,7 +224,7 @@ impl BreakStmt {
 }
 impl FunCall {
     pub fn create(callee: AstNodeRef, args: Vec<AstNodeRef>, line: usize) -> AstNodeRef {
-        Box::new(FunCall { callee, args, line })
+        Arc::new(FunCall { callee, args, line })
     }
     pub fn callee(&self) -> &AstNodeRef {
         &self.callee
@@ -228,6 +236,24 @@ impl FunCall {
         self.line
     }
 }
+impl FunDecl {
+    pub fn create(name: Token, args: Vec<Token>, block: AstNodeRef) -> AstNodeRef {
+        Arc::new(FunDecl { name, args, block })
+    }
+
+    pub fn name(&self) -> &Token {
+        &self.name
+    }
+
+    pub fn args(&self) -> &Vec<Token> {
+        &self.args
+    }
+
+    pub fn block(&self) -> &AstNodeRef {
+        &self.block
+    }
+}
+
 impl Ast {
     pub fn create(expr: AstNodeRef) -> Ast {
         Ast { root: expr }
@@ -312,6 +338,15 @@ impl Display for FunCall {
         write!(f, "({}", self.callee)?;
         for a in self.args() {
             write!(f, " {},", a)?;
+        }
+        write!(f, ")")
+    }
+}
+impl Display for FunDecl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({} ", self.name())?;
+        for a in self.args.iter() {
+            write!(f, "{} ", a.text())?;
         }
         write!(f, ")")
     }
@@ -425,6 +460,14 @@ impl AstNode for FunCall {
     }
     fn kind(&self) -> AstNodeKind {
         AstNodeKind::FunCall
+    }
+}
+impl AstNode for FunDecl {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_fun_decl(self)
+    }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::FunDecl
     }
 }
 impl AstNode for Program {

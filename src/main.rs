@@ -1,6 +1,6 @@
 mod ast;
+mod function;
 mod interpret;
-mod native;
 mod parse;
 mod scan;
 mod token;

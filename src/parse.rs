@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
-        GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
+        FunDecl, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -66,8 +66,35 @@ impl Parser {
     fn parse_declaration(&mut self) -> Result<AstNodeRef, ()> {
         if self.check(TokenKind::Var) {
             return self.parse_var_decl();
+        } else if self.check(TokenKind::Fun) {
+            return self.parse_func_decl();
         }
         return self.parse_stmt();
+    }
+    fn parse_func_decl(&mut self) -> Result<AstNodeRef, ()> {
+        self.advance();
+        let name = self.consume(TokenKind::Identifier)?;
+        self.consume(TokenKind::LeftParen)?;
+
+        let mut params = vec![];
+        if !self.check(TokenKind::RightParen) {
+            params.push(self.consume(TokenKind::Identifier)?);
+            while self.check(TokenKind::Comma) {
+                if params.len() == 255 {
+                    lox_error(
+                        self.peek().line(),
+                        "functions are not allowed to have more than 255 params",
+                    );
+                    return Err(());
+                }
+                self.advance();
+                params.push(self.consume(TokenKind::Identifier)?)
+            }
+        }
+        self.consume(TokenKind::RightParen)?;
+
+        let block = self.parse_block()?;
+        Ok(FunDecl::create(name, params, block))
     }
     fn parse_var_decl(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();
