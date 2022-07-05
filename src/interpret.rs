@@ -1,5 +1,5 @@
 use crate::{
-    ast::{AssignExpr, Block, BreakStmt, IfStmt, WhileStmt},
+    ast::{AssignExpr, Block, BreakStmt, FunCall, IfStmt, WhileStmt},
     lox_error,
     token::{Token, TokenKind},
 };
@@ -15,6 +15,8 @@ pub enum Value {
     Number(f64),
     String(String),
     Boolean(bool),
+    #[allow(dead_code)]
+    NativeFun(fn(Vec<Value>) -> Result<Value, ()>),
     Nil,
 }
 
@@ -239,6 +241,22 @@ impl Interpretor {
 
         Ok(Value::Nil)
     }
+    pub fn interpret_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
+        let line = node.line();
+        let callee = node.callee().interpret(self)?;
+        let callee = match callee {
+            Value::NativeFun(f) => f,
+            _ => {
+                lox_error(line, format!("{} is not callable", callee).as_str());
+                return Err(());
+            }
+        };
+        let mut args = vec![];
+        for a in node.args() {
+            args.push(a.interpret(self)?);
+        }
+        Ok(callee(args)?)
+    }
     pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
         for s in node.decs() {
             s.interpret(self)?;
@@ -278,6 +296,7 @@ impl Display for Value {
             Value::String(s) => s.clone(),
             Value::Nil => String::from("NIL"),
             Value::Boolean(b) => b.to_string(),
+            Value::NativeFun(_) => "[Native Function]".to_string(),
         };
         write!(f, "{}", rep)
     }

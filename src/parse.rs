@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt,
+        AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
         GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
     },
     lox_error,
@@ -258,9 +258,32 @@ impl Parser {
             let operator = self.previous();
             UnaryExpr::create(operator, self.parse_unary()?)
         } else {
-            self.parse_primary()?
+            self.parse_call()?
         };
         Ok(node)
+    }
+    fn parse_call(&mut self) -> Result<AstNodeRef, ()> {
+        let mut expr = self.parse_primary()?;
+        while self.check(TokenKind::LeftParen) {
+            let tkn = self.consume(TokenKind::LeftParen)?;
+            let args = if !self.check(TokenKind::RightParen) {
+                self.parse_arguments()?
+            } else {
+                vec![]
+            };
+            self.consume(TokenKind::RightParen)?;
+            expr = FunCall::create(expr, args, tkn.line());
+        }
+        Ok(expr)
+    }
+    fn parse_arguments(&mut self) -> Result<Vec<AstNodeRef>, ()> {
+        let mut args = vec![];
+        args.push(self.parse_expression()?);
+        while self.check(TokenKind::Comma) {
+            self.advance();
+            args.push(self.parse_expression()?);
+        }
+        Ok(args)
     }
     fn parse_primary(&mut self) -> Result<AstNodeRef, ()> {
         if self.match_kinds(&[

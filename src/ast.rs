@@ -17,6 +17,7 @@ pub enum AstNodeKind {
     WhileStmt,
     AssignExpr,
     BreakStmt,
+    FunCall,
 }
 
 pub trait AstNode: Display {
@@ -71,6 +72,11 @@ pub struct WhileStmt {
 }
 pub struct BreakStmt {
     token: Token,
+}
+pub struct FunCall {
+    line: usize,
+    callee: AstNodeRef,
+    args: Vec<AstNodeRef>,
 }
 pub struct Ast {
     root: AstNodeRef,
@@ -200,13 +206,26 @@ impl WhileStmt {
         &self.stmt
     }
 }
-
 impl BreakStmt {
     pub fn create(token: Token) -> AstNodeRef {
         Box::new(BreakStmt { token })
     }
     pub fn token(&self) -> &Token {
         &self.token
+    }
+}
+impl FunCall {
+    pub fn create(callee: AstNodeRef, args: Vec<AstNodeRef>, line: usize) -> AstNodeRef {
+        Box::new(FunCall { callee, args, line })
+    }
+    pub fn callee(&self) -> &AstNodeRef {
+        &self.callee
+    }
+    pub fn args(&self) -> &Vec<AstNodeRef> {
+        &self.args
+    }
+    pub fn line(&self) -> usize {
+        self.line
     }
 }
 impl Ast {
@@ -286,6 +305,15 @@ impl Display for WhileStmt {
 impl Display for BreakStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "break")
+    }
+}
+impl Display for FunCall {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}", self.callee)?;
+        for a in self.args() {
+            write!(f, " {},", a)?;
+        }
+        write!(f, ")")
     }
 }
 impl Display for Program {
@@ -389,6 +417,14 @@ impl AstNode for BreakStmt {
     }
     fn kind(&self) -> AstNodeKind {
         AstNodeKind::BreakStmt
+    }
+}
+impl AstNode for FunCall {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_fun_call(self)
+    }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::FunCall
     }
 }
 impl AstNode for Program {
