@@ -258,6 +258,19 @@ impl Interpretor {
                 return Err(());
             }
         };
+        if callee.param_count() != -1 && callee.param_count() != node.args().len() as isize {
+            lox_error(
+                line,
+                format!(
+                    "invalid number of arguments ({}) passed to function {} which takes {} params",
+                    node.args().len(),
+                    callee.name(),
+                    callee.param_count(),
+                )
+                .as_str(),
+            );
+            return Err(());
+        }
         let mut args = vec![];
         for a in node.args() {
             args.push(a.interpret(self)?);
