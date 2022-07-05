@@ -81,6 +81,23 @@ pub fn interpret(ast: Ast) -> Option<Value> {
     }
 }
 
+pub fn check_arity(params: &Vec<String>, arg_count: usize) -> Option<usize> {
+    let pcount;
+    let err;
+
+    if params.last() == Some(&"".to_string()) {
+        pcount = params.len() - 1;
+        err = arg_count < pcount;
+    } else {
+        pcount = params.len();
+        err = arg_count != pcount;
+    }
+    if err {
+        return Some(pcount);
+    }
+    None
+}
+
 impl Interpretor {
     fn new() -> Interpretor {
         Interpretor {
@@ -268,19 +285,20 @@ impl Interpretor {
                 return Err(());
             }
         };
-        if callee.params().len() != node.args().len() {
+        if let Some(pcount) = check_arity(callee.params(), node.args().len()) {
             lox_error(
                 line,
                 format!(
                     "invalid number of arguments ({}) passed to function {} which takes {} params",
                     node.args().len(),
                     callee.name(),
-                    callee.params().len(),
+                    pcount,
                 )
                 .as_str(),
             );
             return Err(());
         }
+
         let mut args = vec![];
         for a in node.args() {
             args.push(a.interpret(self)?);
