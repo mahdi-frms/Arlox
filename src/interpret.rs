@@ -203,7 +203,7 @@ impl Interpretor {
             _ => {
                 crate::lox_error(
                     node.token().line(),
-                    "operator '+' can only be used on number or string types",
+                    "operator '+' can only be used on 2 numbers or 2 strings",
                 );
                 Err(())
             }
@@ -224,7 +224,7 @@ impl Interpretor {
             _ => {
                 crate::lox_error(
                     node.token().line(),
-                    "operator '+' can only be used on number or string types",
+                    "arithmatic operators can only be used on numbers",
                 );
                 Err(())
             }
