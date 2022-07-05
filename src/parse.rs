@@ -280,6 +280,10 @@ impl Parser {
         let mut args = vec![];
         args.push(self.parse_expression()?);
         while self.check(TokenKind::Comma) {
+            if args.len() == 255 {
+                lox_error(self.peek().line(), "more than 255 arguments is not allowed");
+                return Err(());
+            }
             self.advance();
             args.push(self.parse_expression()?);
         }
