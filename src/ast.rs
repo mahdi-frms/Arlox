@@ -18,6 +18,7 @@ pub enum AstNodeKind {
     WhileStmt,
     AssignExpr,
     BreakStmt,
+    ReturnStmt,
     FunCall,
     FunDecl,
 }
@@ -74,6 +75,10 @@ pub struct WhileStmt {
 }
 pub struct BreakStmt {
     token: Token,
+}
+pub struct ReturnStmt {
+    token: Token,
+    expr: Option<AstNodeRef>,
 }
 pub struct FunCall {
     line: usize,
@@ -222,6 +227,17 @@ impl BreakStmt {
         &self.token
     }
 }
+impl ReturnStmt {
+    pub fn create(token: Token, expr: Option<AstNodeRef>) -> AstNodeRef {
+        Arc::new(ReturnStmt { token, expr })
+    }
+    pub fn token(&self) -> &Token {
+        &self.token
+    }
+    pub fn expr(&self) -> Option<&AstNodeRef> {
+        self.expr.as_ref()
+    }
+}
 impl FunCall {
     pub fn create(callee: AstNodeRef, args: Vec<AstNodeRef>, line: usize) -> AstNodeRef {
         Arc::new(FunCall { callee, args, line })
@@ -331,6 +347,14 @@ impl Display for WhileStmt {
 impl Display for BreakStmt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "break")
+    }
+}
+impl Display for ReturnStmt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.expr() {
+            Some(e) => write!(f, "(return {})", e),
+            None => write!(f, "return"),
+        }
     }
 }
 impl Display for FunCall {
@@ -452,6 +476,14 @@ impl AstNode for BreakStmt {
     }
     fn kind(&self) -> AstNodeKind {
         AstNodeKind::BreakStmt
+    }
+}
+impl AstNode for ReturnStmt {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_return_stmt(self)
+    }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::ReturnStmt
     }
 }
 impl AstNode for FunCall {

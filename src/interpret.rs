@@ -1,5 +1,5 @@
 use crate::{
-    ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, IfStmt, WhileStmt},
+    ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, IfStmt, ReturnStmt, WhileStmt},
     function::{all_natives, Function, Implementation},
     lox_error,
     token::{Token, TokenKind},
@@ -64,6 +64,7 @@ impl Environment {
 pub struct Interpretor {
     env: Environment,
     breaking: Option<Token>,
+    returning: Option<(Token, Value)>,
 }
 
 pub fn interpret(ast: Ast) -> Option<Value> {
@@ -74,7 +75,10 @@ pub fn interpret(ast: Ast) -> Option<Value> {
 
     let rsl = ast.root().interpret(&mut interpretor).ok();
     if let Some(tkn) = interpretor.breaking {
-        lox_error(tkn.line(), "break statement out ot loop");
+        lox_error(tkn.line(), "break statement out of loop");
+        None
+    } else if let Some((tkn, _)) = interpretor.returning {
+        lox_error(tkn.line(), "return statement out of function");
         None
     } else {
         rsl
@@ -103,6 +107,7 @@ impl Interpretor {
         Interpretor {
             env: Environment::new(),
             breaking: None,
+            returning: None,
         }
     }
     pub fn interpret_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
@@ -168,6 +173,14 @@ impl Interpretor {
     }
     pub fn interpret_break_stmt(&mut self, node: &BreakStmt) -> Result<Value, ()> {
         self.breaking = Some(node.token().clone());
+        Ok(Value::Nil)
+    }
+    pub fn interpret_return_stmt(&mut self, node: &ReturnStmt) -> Result<Value, ()> {
+        let value = match node.expr() {
+            Some(e) => e.interpret(self)?,
+            None => Value::Nil,
+        };
+        self.returning = Some((node.token().clone(), value));
         Ok(Value::Nil)
     }
     pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
@@ -310,9 +323,14 @@ impl Interpretor {
                 for (p, a) in callee.params().iter().zip(args.iter()) {
                     self.env.init(p.clone(), a.clone())
                 }
-                let rsl = lf.interpret(self)?;
+                lf.interpret(self)?;
                 self.env.exit();
-                Ok(rsl)
+                if let Some((_, value)) = self.returning.clone() {
+                    self.returning = None;
+                    Ok(value)
+                } else {
+                    Ok(Value::Nil)
+                }
             }
         }
     }
@@ -323,6 +341,9 @@ impl Interpretor {
             if let Some(_) = self.breaking {
                 break;
             }
+            if let Some(_) = self.returning {
+                break;
+            }
         }
         Ok(Value::Nil)
     }
@@ -331,6 +352,9 @@ impl Interpretor {
         for s in node.decs() {
             s.interpret(self)?;
             if let Some(_) = self.breaking {
+                break;
+            }
+            if let Some(_) = self.returning {
                 break;
             }
         }

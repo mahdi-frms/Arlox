@@ -1,7 +1,8 @@
 use crate::{
     ast::{
         AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
-        FunDecl, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl, WhileStmt,
+        FunDecl, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, ReturnStmt, UnaryExpr,
+        VarDecl, WhileStmt,
     },
     lox_error,
     token::{Token, TokenKind},
@@ -116,6 +117,15 @@ impl Parser {
         } else if self.check(TokenKind::Break) {
             node = Ok(BreakStmt::create(self.advance()));
             self.consume(TokenKind::Semicolon)?;
+        } else if self.check(TokenKind::Return) {
+            let tkn = self.advance();
+            let expr = if self.check(TokenKind::Semicolon) {
+                None
+            } else {
+                Some(self.parse_expression()?)
+            };
+            self.consume(TokenKind::Semicolon)?;
+            node = Ok(ReturnStmt::create(tkn, expr));
         } else if self.check(TokenKind::For) {
             node = self.parse_for_stmt();
         } else if self.check(TokenKind::Print) {
