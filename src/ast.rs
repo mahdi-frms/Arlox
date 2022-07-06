@@ -87,7 +87,11 @@ pub struct FunCall {
 }
 pub struct FunDecl {
     name: Token,
-    args: Vec<Token>,
+    params: Vec<Token>,
+    block: AstNodeRef,
+}
+pub struct FunDef {
+    params: Vec<Token>,
     block: AstNodeRef,
 }
 
@@ -254,15 +258,36 @@ impl FunCall {
 }
 impl FunDecl {
     pub fn create(name: Token, args: Vec<Token>, block: AstNodeRef) -> AstNodeRef {
-        Arc::new(FunDecl { name, args, block })
+        Arc::new(FunDecl {
+            name,
+            params: args,
+            block,
+        })
     }
 
     pub fn name(&self) -> &Token {
         &self.name
     }
 
-    pub fn args(&self) -> &Vec<Token> {
-        &self.args
+    pub fn params(&self) -> &Vec<Token> {
+        &self.params
+    }
+
+    pub fn block(&self) -> &AstNodeRef {
+        &self.block
+    }
+}
+
+impl FunDef {
+    pub fn create(args: Vec<Token>, block: AstNodeRef) -> AstNodeRef {
+        Arc::new(FunDef {
+            params: args,
+            block,
+        })
+    }
+
+    pub fn params(&self) -> &Vec<Token> {
+        &self.params
     }
 
     pub fn block(&self) -> &AstNodeRef {
@@ -369,10 +394,21 @@ impl Display for FunCall {
 impl Display for FunDecl {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({} ", self.name())?;
-        for a in self.args.iter() {
+        for a in self.params.iter() {
             write!(f, "{} ", a.text())?;
         }
-        write!(f, ")")
+        write!(f, ")")?;
+        write!(f, "{}", self.block())
+    }
+}
+impl Display for FunDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "([fun] ")?;
+        for a in self.params.iter() {
+            write!(f, "{} ", a.text())?;
+        }
+        write!(f, ")")?;
+        write!(f, "{}", self.block())
     }
 }
 impl Display for Program {
@@ -497,6 +533,14 @@ impl AstNode for FunCall {
 impl AstNode for FunDecl {
     fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
         interpretor.interpret_fun_decl(self)
+    }
+    fn kind(&self) -> AstNodeKind {
+        AstNodeKind::FunDecl
+    }
+}
+impl AstNode for FunDef {
+    fn interpret(&self, interpretor: &mut interpret::Interpretor) -> Result<interpret::Value, ()> {
+        interpretor.interpret_fun_def(self)
     }
     fn kind(&self) -> AstNodeKind {
         AstNodeKind::FunDecl

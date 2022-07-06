@@ -24,23 +24,19 @@ impl PartialEq for Implementation {
 
 #[derive(PartialEq, Clone)]
 pub struct Function {
-    name: String,
     params: Vec<String>,
     code: Implementation,
 }
 
 impl Function {
-    pub fn name(&self) -> &String {
-        &self.name
-    }
     pub fn code(&self) -> &Implementation {
         &self.code
     }
     pub fn params(&self) -> &Vec<String> {
         &self.params
     }
-    pub fn create(name: String, code: Implementation, params: Vec<String>) -> Function {
-        Function { name, code, params }
+    pub fn create(code: Implementation, params: Vec<String>) -> Function {
+        Function { code, params }
     }
 }
 
@@ -61,18 +57,16 @@ fn clock(_: Vec<Value>) -> Result<Value, ()> {
     ))
 }
 
-pub fn all_natives() -> Vec<Function> {
+pub fn all_natives() -> Vec<(String, Function)> {
     let mut all = vec![];
 
-    all.push(Function::create(
+    all.push((
         "log".to_string(),
-        Implementation::NativeImpl(log),
-        vec!["".to_string()],
+        Function::create(Implementation::NativeImpl(log), vec!["".to_string()]),
     ));
-    all.push(Function::create(
+    all.push((
         "clock".to_string(),
-        Implementation::NativeImpl(clock),
-        vec![],
+        Function::create(Implementation::NativeImpl(clock), vec![]),
     ));
 
     all

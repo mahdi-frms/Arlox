@@ -1,7 +1,7 @@
 use crate::{
     ast::{
         AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
-        FunDecl, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, ReturnStmt, UnaryExpr,
+        FunDecl, FunDef, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, ReturnStmt, UnaryExpr,
         VarDecl, WhileStmt,
     },
     lox_error,
@@ -75,6 +75,9 @@ impl Parser {
     fn parse_func_decl(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();
         let name = self.consume(TokenKind::Identifier)?;
+        Ok(self.parse_func(Some(name))?)
+    }
+    fn parse_func(&mut self, name: Option<Token>) -> Result<AstNodeRef, ()> {
         self.consume(TokenKind::LeftParen)?;
 
         let mut params = vec![];
@@ -95,7 +98,10 @@ impl Parser {
         self.consume(TokenKind::RightParen)?;
 
         let block = self.parse_block()?;
-        Ok(FunDecl::create(name, params, block))
+        match name {
+            Some(name) => Ok(FunDecl::create(name, params, block)),
+            None => Ok(FunDef::create(params, block)),
+        }
     }
     fn parse_var_decl(&mut self) -> Result<AstNodeRef, ()> {
         self.advance();
@@ -340,6 +346,8 @@ impl Parser {
             let expr = self.parse_expression()?;
             self.consume(TokenKind::RightParen)?;
             Ok(GroupExpr::create(expr))
+        } else if self.match_kinds(&[TokenKind::Fun]) {
+            self.parse_func(None)
         } else {
             super::lox_error(self.peek().line(), &format!("expression expected"));
             Err(())

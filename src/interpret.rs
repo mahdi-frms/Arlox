@@ -1,5 +1,5 @@
 use crate::{
-    ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, IfStmt, ReturnStmt, WhileStmt},
+    ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, FunDef, IfStmt, ReturnStmt, WhileStmt},
     function::{all_natives, Function, Implementation},
     lox_error,
     token::{Token, TokenKind},
@@ -69,8 +69,8 @@ pub struct Interpretor {
 
 pub fn interpret(ast: Ast) -> Option<Value> {
     let mut interpretor = Interpretor::new();
-    for nf in all_natives() {
-        interpretor.env.init(nf.name().clone(), Value::Function(nf));
+    for (name, nf) in all_natives() {
+        interpretor.env.init(name, Value::Function(nf));
     }
 
     let rsl = ast.root().interpret(&mut interpretor).ok();
@@ -281,12 +281,17 @@ impl Interpretor {
         self.env.init(
             name.clone(),
             Value::Function(Function::create(
-                name.clone(),
                 Implementation::LoxImpl(node.block().clone()),
-                node.args().iter().map(|t| t.text().clone()).collect(),
+                node.params().iter().map(|t| t.text().clone()).collect(),
             )),
         );
         Ok(Value::Nil)
+    }
+    pub fn interpret_fun_def(&mut self, node: &FunDef) -> Result<Value, ()> {
+        Ok(Value::Function(Function::create(
+            Implementation::LoxImpl(node.block().clone()),
+            node.params().iter().map(|t| t.text().clone()).collect(),
+        )))
     }
     pub fn interpret_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
         let line = node.line();
@@ -302,9 +307,8 @@ impl Interpretor {
             lox_error(
                 line,
                 format!(
-                    "invalid number of arguments ({}) passed to function {} which takes {} params",
+                    "invalid number of arguments ({}) passed to function which takes {} params",
                     node.args().len(),
-                    callee.name(),
                     pcount,
                 )
                 .as_str(),
