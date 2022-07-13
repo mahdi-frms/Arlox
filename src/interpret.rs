@@ -1,15 +1,15 @@
+use crate::ast::{
+    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl,
+};
+
+use crate::environment::{Env, Environment};
 use crate::{
     ast::{AssignExpr, Block, BreakStmt, FunCall, FunDecl, FunDef, IfStmt, ReturnStmt, WhileStmt},
     function::{all_natives, Function, Implementation},
     lox_error,
     token::{Token, TokenKind},
 };
-use std::collections::hash_map::HashMap;
 use std::fmt::Display;
-
-use crate::ast::{
-    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl,
-};
 
 #[derive(PartialEq, Clone)]
 pub enum Value {
@@ -20,49 +20,8 @@ pub enum Value {
     Nil,
 }
 
-struct Environment {
-    maps: Vec<HashMap<String, Value>>,
-}
-
-impl Environment {
-    fn new() -> Environment {
-        Environment {
-            maps: vec![HashMap::new()],
-        }
-    }
-    fn get(&mut self, name: &String) -> Option<&mut Value> {
-        for m in self.maps.iter_mut().rev() {
-            if let Some(v) = m.get_mut(name) {
-                return Some(v);
-            }
-        }
-        return None;
-    }
-    fn set(&mut self, name: String, value: Value) {
-        if let Some(m) = self.maps.last_mut() {
-            m.insert(name, value);
-        }
-    }
-    fn assign(&mut self, name: String, value: Value) {
-        if let Some(v) = self.get(&name) {
-            *v = value;
-        } else {
-            self.set(name, value);
-        }
-    }
-    fn init(&mut self, name: String, value: Value) {
-        self.set(name, value);
-    }
-    fn enter(&mut self) {
-        self.maps.push(HashMap::new())
-    }
-    fn exit(&mut self) {
-        self.maps.pop();
-    }
-}
-
 pub struct Interpretor {
-    env: Environment,
+    env: Env,
     breaking: Option<Token>,
     returning: Option<(Token, Value)>,
 }
@@ -70,7 +29,7 @@ pub struct Interpretor {
 pub fn interpret(ast: Ast) -> Option<Value> {
     let mut interpretor = Interpretor::new();
     for (name, nf) in all_natives() {
-        interpretor.env.init(name, Value::Function(nf));
+        interpretor.env.borrow_mut().init(name, Value::Function(nf));
     }
 
     let rsl = ast.root().interpret(&mut interpretor).ok();
@@ -105,10 +64,19 @@ pub fn check_arity(params: &Vec<String>, arg_count: usize) -> Option<usize> {
 impl Interpretor {
     fn new() -> Interpretor {
         Interpretor {
-            env: Environment::new(),
+            env: Environment::new(None),
             breaking: None,
             returning: None,
         }
+    }
+    fn _env_global(env: Env) -> Env {
+        match env.borrow().parent().as_ref() {
+            None => env.clone(),
+            Some(p) => Self::_env_global(p.clone()),
+        }
+    }
+    fn env_global(&self) -> Env {
+        Self::_env_global(self.env.clone())
     }
     pub fn interpret_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
         match node.token().kind() {
@@ -128,7 +96,7 @@ impl Interpretor {
             )),
             TokenKind::True => Ok(Value::Boolean(true)),
             TokenKind::False => Ok(Value::Boolean(false)),
-            TokenKind::Identifier => match self.env.get(node.token().text()) {
+            TokenKind::Identifier => match self.env.borrow_mut().get(node.token().text()) {
                 Some(v) => Ok(v.clone()),
                 None => {
                     lox_error(
@@ -147,6 +115,7 @@ impl Interpretor {
     pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
         let value = node.expr().interpret(self)?;
         self.env
+            .borrow_mut()
             .assign(node.variable().text().clone(), value.clone());
         Ok(value)
     }
@@ -272,17 +241,20 @@ impl Interpretor {
             Some(e) => e.interpret(self)?,
             None => Value::Nil,
         };
-        self.env.init(node.name().text().clone(), value);
+        self.env
+            .borrow_mut()
+            .init(node.name().text().clone(), value);
 
         Ok(Value::Nil)
     }
     pub fn interpret_fun_decl(&mut self, node: &FunDecl) -> Result<Value, ()> {
         let name = node.name().text().clone();
-        self.env.init(
+        self.env.borrow_mut().init(
             name.clone(),
             Value::Function(Function::create(
                 Implementation::LoxImpl(node.block().clone()),
                 node.params().iter().map(|t| t.text().clone()).collect(),
+                Some(self.env.clone()),
             )),
         );
         Ok(Value::Nil)
@@ -291,6 +263,7 @@ impl Interpretor {
         Ok(Value::Function(Function::create(
             Implementation::LoxImpl(node.block().clone()),
             node.params().iter().map(|t| t.text().clone()).collect(),
+            Some(self.env.clone()),
         )))
     }
     pub fn interpret_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
@@ -315,7 +288,8 @@ impl Interpretor {
             );
             return Err(());
         }
-
+        let new_env = callee.closure().unwrap_or_else(|| self.env_global());
+        let new_env = Environment::new(Some(new_env));
         let mut args = vec![];
         for a in node.args() {
             args.push(a.interpret(self)?);
@@ -323,12 +297,14 @@ impl Interpretor {
         match callee.code() {
             Implementation::NativeImpl(nf) => Ok(nf(args)?),
             Implementation::LoxImpl(lf) => {
-                self.env.enter();
+                let prev = self.env.clone();
+                self.env = new_env;
                 for (p, a) in callee.params().iter().zip(args.iter()) {
-                    self.env.init(p.clone(), a.clone())
+                    self.env.borrow_mut().init(p.clone(), a.clone())
                 }
                 lf.interpret(self)?;
-                self.env.exit();
+                self.env = prev;
+
                 if let Some((_, value)) = self.returning.clone() {
                     self.returning = None;
                     Ok(value)
@@ -352,7 +328,9 @@ impl Interpretor {
         Ok(Value::Nil)
     }
     pub fn interpret_block(&mut self, node: &Block) -> Result<Value, ()> {
-        self.env.enter();
+        let parent = self.env.clone();
+        let branch = Environment::new(Some(parent.clone()));
+        self.env = branch;
         for s in node.decs() {
             s.interpret(self)?;
             if let Some(_) = self.breaking {
@@ -362,7 +340,7 @@ impl Interpretor {
                 break;
             }
         }
-        self.env.exit();
+        self.env = parent;
         Ok(Value::Nil)
     }
 }

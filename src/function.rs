@@ -3,7 +3,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::{ast::AstNodeRef, interpret::Value};
+use crate::{ast::AstNodeRef, environment::Env, interpret::Value};
 type NativeImpl = fn(Vec<Value>) -> Result<Value, ()>;
 
 #[derive(Clone)]
@@ -22,10 +22,17 @@ impl PartialEq for Implementation {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub struct Function {
     params: Vec<String>,
     code: Implementation,
+    closure: Option<Env>,
+}
+
+impl PartialEq for Function {
+    fn eq(&self, other: &Self) -> bool {
+        self.code == other.code
+    }
 }
 
 impl Function {
@@ -35,8 +42,15 @@ impl Function {
     pub fn params(&self) -> &Vec<String> {
         &self.params
     }
-    pub fn create(code: Implementation, params: Vec<String>) -> Function {
-        Function { code, params }
+    pub fn closure(&self) -> Option<Env> {
+        self.closure.clone()
+    }
+    pub fn create(code: Implementation, params: Vec<String>, closure: Option<Env>) -> Function {
+        Function {
+            code,
+            params,
+            closure,
+        }
     }
 }
 
@@ -62,11 +76,11 @@ pub fn all_natives() -> Vec<(String, Function)> {
 
     all.push((
         "log".to_string(),
-        Function::create(Implementation::NativeImpl(log), vec!["".to_string()]),
+        Function::create(Implementation::NativeImpl(log), vec!["".to_string()], None),
     ));
     all.push((
         "clock".to_string(),
-        Function::create(Implementation::NativeImpl(clock), vec![]),
+        Function::create(Implementation::NativeImpl(clock), vec![], None),
     ));
 
     all
