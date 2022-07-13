@@ -1,6 +1,6 @@
 use crate::{
     ast::{
-        AssignExpr, Ast, AstNodeKind, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
+        AssignExpr, Ast, AstNode, AstNodeRef, BinaryExpr, Block, BreakStmt, ExprStmt, FunCall,
         FunDecl, FunDef, GroupExpr, IfStmt, LiteralExpr, PrintStmt, Program, ReturnStmt, UnaryExpr,
         VarDecl, WhileStmt,
     },
@@ -223,8 +223,9 @@ impl Parser {
         while nodes.len() > 0 {
             let node = nodes.pop().ok_or(())?;
             let line = lines.pop().ok_or(())?;
-            match node.kind() {
-                AstNodeKind::LiteralExpr(tkn) => {
+            match node.as_ref() {
+                AstNode::LiteralExpr(lit) => {
+                    let tkn = lit.token();
                     expr = match tkn.kind() {
                         TokenKind::Identifier => AssignExpr::create(tkn.clone(), expr),
                         _ => {

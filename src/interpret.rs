@@ -1,5 +1,6 @@
 use crate::ast::{
-    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, PrintStmt, Program, UnaryExpr, VarDecl,
+    Ast, BinaryExpr, ExprStmt, GroupExpr, LiteralExpr, NodeVisitor, PrintStmt, Program, UnaryExpr,
+    VarDecl,
 };
 
 use crate::environment::{Env, Environment};
@@ -20,7 +21,7 @@ pub enum Value {
     Nil,
 }
 
-pub struct Interpretor {
+struct Interpretor {
     env: Env,
     breaking: Option<Token>,
     returning: Option<(Token, Value)>,
@@ -32,7 +33,7 @@ pub fn interpret(ast: Ast) -> Option<Value> {
         interpretor.env.borrow_mut().init(name, Value::Function(nf));
     }
 
-    let rsl = ast.root().interpret(&mut interpretor).ok();
+    let rsl = ast.root().visit(&mut interpretor).ok();
     if let Some(tkn) = interpretor.breaking {
         lox_error(tkn.line(), "break statement out of loop");
         None
@@ -44,7 +45,7 @@ pub fn interpret(ast: Ast) -> Option<Value> {
     }
 }
 
-pub fn check_arity(params: &Vec<String>, arg_count: usize) -> Option<usize> {
+fn check_arity(params: &Vec<String>, arg_count: usize) -> Option<usize> {
     let pcount;
     let err;
 
@@ -78,7 +79,11 @@ impl Interpretor {
     fn env_global(&self) -> Env {
         Self::_env_global(self.env.clone())
     }
-    pub fn interpret_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
+}
+
+impl NodeVisitor for Interpretor {
+    type Retval = Result<Value, ()>;
+    fn visit_literal(&mut self, node: &LiteralExpr) -> Result<Value, ()> {
         match node.token().kind() {
             TokenKind::Nil => Ok(Value::Nil),
             TokenKind::Number => match node.token().text().parse::<f64>() {
@@ -109,30 +114,30 @@ impl Interpretor {
             _ => Err(()),
         }
     }
-    pub fn interpret_group(&mut self, node: &GroupExpr) -> Result<Value, ()> {
-        node.expr().interpret(self)
+    fn visit_group(&mut self, node: &GroupExpr) -> Result<Value, ()> {
+        node.expr().visit(self)
     }
-    pub fn interpret_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
-        let value = node.expr().interpret(self)?;
+    fn visit_assignment(&mut self, node: &AssignExpr) -> Result<Value, ()> {
+        let value = node.expr().visit(self)?;
         self.env
             .borrow_mut()
             .assign(node.variable().text().clone(), value.clone());
         Ok(value)
     }
-    pub fn interpret_if_stmt(&mut self, node: &IfStmt) -> Result<Value, ()> {
-        let condition = node.expr().interpret(self)?;
+    fn visit_if_stmt(&mut self, node: &IfStmt) -> Result<Value, ()> {
+        let condition = node.expr().visit(self)?;
         if condition.truth() {
-            node.stmt().interpret(self)?;
+            node.stmt().visit(self)?;
         } else {
             if let Some(elstmt) = node.elstmt() {
-                elstmt.interpret(self)?;
+                elstmt.visit(self)?;
             }
         }
         Ok(Value::Nil)
     }
-    pub fn interpret_while_stmt(&mut self, node: &WhileStmt) -> Result<Value, ()> {
-        while node.expr().interpret(self)?.truth() {
-            node.stmt().interpret(self)?;
+    fn visit_while_stmt(&mut self, node: &WhileStmt) -> Result<Value, ()> {
+        while node.expr().visit(self)?.truth() {
+            node.stmt().visit(self)?;
             if let Some(_) = self.breaking {
                 self.breaking = None;
                 break;
@@ -140,23 +145,23 @@ impl Interpretor {
         }
         Ok(Value::Nil)
     }
-    pub fn interpret_break_stmt(&mut self, node: &BreakStmt) -> Result<Value, ()> {
+    fn visit_break_stmt(&mut self, node: &BreakStmt) -> Result<Value, ()> {
         self.breaking = Some(node.token().clone());
         Ok(Value::Nil)
     }
-    pub fn interpret_return_stmt(&mut self, node: &ReturnStmt) -> Result<Value, ()> {
+    fn visit_return_stmt(&mut self, node: &ReturnStmt) -> Result<Value, ()> {
         let value = match node.expr() {
-            Some(e) => e.interpret(self)?,
+            Some(e) => e.visit(self)?,
             None => Value::Nil,
         };
         self.returning = Some((node.token().clone(), value));
         Ok(Value::Nil)
     }
-    pub fn interpret_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
+    fn visit_unary(&mut self, node: &UnaryExpr) -> Result<Value, ()> {
         if node.token().kind() == TokenKind::Bang {
-            Ok(Value::Boolean(!node.expr().interpret(self)?.truth()))
+            Ok(Value::Boolean(!node.expr().visit(self)?.truth()))
         } else {
-            match node.expr().interpret(self)? {
+            match node.expr().visit(self)? {
                 Value::Number(num) => Ok(Value::Number(-num)),
                 _ => {
                     crate::lox_error(node.token().line(), "expected number after '-'");
@@ -165,8 +170,8 @@ impl Interpretor {
             }
         }
     }
-    pub fn interpret_plus(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        match (node.lexpr().interpret(self)?, node.rexpr().interpret(self)?) {
+    fn visit_plus(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
             (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
             (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
             _ => {
@@ -178,8 +183,8 @@ impl Interpretor {
             }
         }
     }
-    pub fn interpret_math(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        match (node.lexpr().interpret(self)?, node.rexpr().interpret(self)?) {
+    fn visit_math(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
             (Value::Number(a), Value::Number(b)) => match node.token().kind() {
                 TokenKind::Star => Ok(Value::Number(a * b)),
                 TokenKind::Slash => Ok(Value::Number(a / b)),
@@ -199,46 +204,46 @@ impl Interpretor {
             }
         }
     }
-    pub fn interpret_and(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        let left = node.lexpr().interpret(self)?;
+    fn visit_and(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().visit(self)?;
         if !left.truth() {
             return Ok(Value::Boolean(false));
         }
-        node.rexpr().interpret(self)
+        node.rexpr().visit(self)
     }
-    pub fn interpret_or(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        let left = node.lexpr().interpret(self)?;
+    fn visit_or(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().visit(self)?;
         if left.truth() {
             return Ok(Value::Boolean(true));
         }
-        node.rexpr().interpret(self)
+        node.rexpr().visit(self)
     }
-    pub fn interpret_binary(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+    fn visit_binary(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
         match node.token().kind() {
             TokenKind::EqualEqual => Ok(Value::Boolean(
-                node.lexpr().interpret(self) == node.rexpr().interpret(self),
+                node.lexpr().visit(self) == node.rexpr().visit(self),
             )),
             TokenKind::BangEqual => Ok(Value::Boolean(
-                node.lexpr().interpret(self) != node.rexpr().interpret(self),
+                node.lexpr().visit(self) != node.rexpr().visit(self),
             )),
-            TokenKind::Or => self.interpret_or(node),
-            TokenKind::And => self.interpret_and(node),
-            TokenKind::Plus => self.interpret_plus(node),
-            _ => self.interpret_math(node),
+            TokenKind::Or => self.visit_or(node),
+            TokenKind::And => self.visit_and(node),
+            TokenKind::Plus => self.visit_plus(node),
+            _ => self.visit_math(node),
         }
     }
-    pub fn interpret_print_stmt(&mut self, node: &PrintStmt) -> Result<Value, ()> {
-        let value = node.expr().interpret(self)?;
+    fn visit_print_stmt(&mut self, node: &PrintStmt) -> Result<Value, ()> {
+        let value = node.expr().visit(self)?;
         println!("{}", value);
         Ok(Value::Nil)
     }
-    pub fn interpret_expr_stmt(&mut self, node: &ExprStmt) -> Result<Value, ()> {
-        node.expr().interpret(self)?;
+    fn visit_expr_stmt(&mut self, node: &ExprStmt) -> Result<Value, ()> {
+        node.expr().visit(self)?;
         Ok(Value::Nil)
     }
-    pub fn interpret_var_decl(&mut self, node: &VarDecl) -> Result<Value, ()> {
+    fn visit_var_decl(&mut self, node: &VarDecl) -> Result<Value, ()> {
         let value = match node.expr() {
-            Some(e) => e.interpret(self)?,
+            Some(e) => e.visit(self)?,
             None => Value::Nil,
         };
         self.env
@@ -247,7 +252,7 @@ impl Interpretor {
 
         Ok(Value::Nil)
     }
-    pub fn interpret_fun_decl(&mut self, node: &FunDecl) -> Result<Value, ()> {
+    fn visit_fun_decl(&mut self, node: &FunDecl) -> Result<Value, ()> {
         let name = node.name().text().clone();
         self.env.borrow_mut().init(
             name.clone(),
@@ -259,16 +264,16 @@ impl Interpretor {
         );
         Ok(Value::Nil)
     }
-    pub fn interpret_fun_def(&mut self, node: &FunDef) -> Result<Value, ()> {
+    fn visit_fun_def(&mut self, node: &FunDef) -> Result<Value, ()> {
         Ok(Value::Function(Function::create(
             Implementation::LoxImpl(node.block().clone()),
             node.params().iter().map(|t| t.text().clone()).collect(),
             Some(self.env.clone()),
         )))
     }
-    pub fn interpret_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
+    fn visit_fun_call(&mut self, node: &FunCall) -> Result<Value, ()> {
         let line = node.line();
-        let callee = node.callee().interpret(self)?;
+        let callee = node.callee().visit(self)?;
         let callee = match callee {
             Value::Function(fun) => fun,
             _ => {
@@ -292,7 +297,7 @@ impl Interpretor {
         let new_env = Environment::new(Some(new_env));
         let mut args = vec![];
         for a in node.args() {
-            args.push(a.interpret(self)?);
+            args.push(a.visit(self)?);
         }
         match callee.code() {
             Implementation::NativeImpl(nf) => Ok(nf(args)?),
@@ -302,7 +307,7 @@ impl Interpretor {
                 for (p, a) in callee.params().iter().zip(args.iter()) {
                     self.env.borrow_mut().init(p.clone(), a.clone())
                 }
-                lf.interpret(self)?;
+                lf.visit(self)?;
                 self.env = prev;
 
                 if let Some((_, value)) = self.returning.clone() {
@@ -315,9 +320,9 @@ impl Interpretor {
         }
     }
 
-    pub fn interpret_program(&mut self, node: &Program) -> Result<Value, ()> {
+    fn visit_program(&mut self, node: &Program) -> Result<Value, ()> {
         for s in node.decs() {
-            s.interpret(self)?;
+            s.visit(self)?;
             if let Some(_) = self.breaking {
                 break;
             }
@@ -327,12 +332,12 @@ impl Interpretor {
         }
         Ok(Value::Nil)
     }
-    pub fn interpret_block(&mut self, node: &Block) -> Result<Value, ()> {
+    fn visit_block(&mut self, node: &Block) -> Result<Value, ()> {
         let parent = self.env.clone();
         let branch = Environment::new(Some(parent.clone()));
         self.env = branch;
         for s in node.decs() {
-            s.interpret(self)?;
+            s.visit(self)?;
             if let Some(_) = self.breaking {
                 break;
             }
