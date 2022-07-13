@@ -25,6 +25,15 @@ impl Environment {
             None
         }
     }
+    pub fn depth(&self, name: &String) -> Option<usize> {
+        if self.map.contains_key(name) {
+            Some(0)
+        } else if let Some(p) = self.parent.clone() {
+            p.borrow_mut().depth(name).map(|d| d + 1)
+        } else {
+            None
+        }
+    }
     pub fn assign(&mut self, name: String, value: Value) -> bool {
         if let Some(v) = self.map.get_mut(&name) {
             *v = value;

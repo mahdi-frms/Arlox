@@ -3,6 +3,7 @@ mod environment;
 mod function;
 mod interpret;
 mod parse;
+mod resolve;
 mod scan;
 mod token;
 

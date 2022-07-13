@@ -1,4 +1,5 @@
 use crate::token::Token;
+use std::cell::RefCell;
 use std::fmt::Display;
 use std::sync::Arc;
 
@@ -107,6 +108,7 @@ pub struct UnaryExpr {
 }
 pub struct LiteralExpr {
     token: Token,
+    depth: RefCell<usize>,
 }
 pub struct GroupExpr {
     expr: AstNodeRef,
@@ -124,6 +126,7 @@ pub struct VarDecl {
 pub struct AssignExpr {
     variable: Token,
     expr: AstNodeRef,
+    depth: RefCell<usize>,
 }
 pub struct Program {
     decs: Vec<AstNodeRef>,
@@ -197,10 +200,19 @@ impl UnaryExpr {
 }
 impl LiteralExpr {
     pub fn create(token: Token) -> AstNodeRef {
-        Arc::new(AstNode::LiteralExpr(LiteralExpr { token }))
+        Arc::new(AstNode::LiteralExpr(LiteralExpr {
+            token,
+            depth: RefCell::new(0),
+        }))
     }
     pub fn token(&self) -> &Token {
         &self.token
+    }
+    pub fn depth(&self) -> usize {
+        *self.depth.borrow()
+    }
+    pub fn set_depth(&self, depth: usize) {
+        *self.depth.borrow_mut() = depth;
     }
 }
 impl GroupExpr {
@@ -213,13 +225,23 @@ impl GroupExpr {
 }
 impl AssignExpr {
     pub fn create(variable: Token, expr: AstNodeRef) -> AstNodeRef {
-        Arc::new(AstNode::AssignExpr(AssignExpr { variable, expr }))
+        Arc::new(AstNode::AssignExpr(AssignExpr {
+            variable,
+            expr,
+            depth: RefCell::new(0),
+        }))
     }
     pub fn variable(&self) -> &Token {
         &self.variable
     }
     pub fn expr(&self) -> &AstNodeRef {
         &self.expr
+    }
+    pub fn depth(&self) -> usize {
+        *self.depth.borrow()
+    }
+    pub fn set_depth(&self, depth: usize) {
+        *self.depth.borrow_mut() = depth;
     }
 }
 impl ExprStmt {
