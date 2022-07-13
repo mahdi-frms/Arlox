@@ -83,10 +83,6 @@ pub trait NodeVisitor {
     fn visit_break_stmt(&mut self, node: &BreakStmt) -> <Self as NodeVisitor>::Retval;
     fn visit_return_stmt(&mut self, node: &ReturnStmt) -> <Self as NodeVisitor>::Retval;
     fn visit_unary(&mut self, node: &UnaryExpr) -> <Self as NodeVisitor>::Retval;
-    fn visit_plus(&mut self, node: &BinaryExpr) -> <Self as NodeVisitor>::Retval;
-    fn visit_math(&mut self, node: &BinaryExpr) -> <Self as NodeVisitor>::Retval;
-    fn visit_and(&mut self, node: &BinaryExpr) -> <Self as NodeVisitor>::Retval;
-    fn visit_or(&mut self, node: &BinaryExpr) -> <Self as NodeVisitor>::Retval;
     fn visit_binary(&mut self, node: &BinaryExpr) -> <Self as NodeVisitor>::Retval;
     fn visit_print_stmt(&mut self, node: &PrintStmt) -> <Self as NodeVisitor>::Retval;
     fn visit_expr_stmt(&mut self, node: &ExprStmt) -> <Self as NodeVisitor>::Retval;

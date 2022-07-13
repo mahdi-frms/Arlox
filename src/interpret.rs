@@ -79,6 +79,54 @@ impl Interpretor {
     fn env_global(&self) -> Env {
         Self::_env_global(self.env.clone())
     }
+    fn visit_plus(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
+            (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
+            (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
+            _ => {
+                crate::lox_error(
+                    node.token().line(),
+                    "operator '+' can only be used on 2 numbers or 2 strings",
+                );
+                Err(())
+            }
+        }
+    }
+    fn visit_math(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
+            (Value::Number(a), Value::Number(b)) => match node.token().kind() {
+                TokenKind::Star => Ok(Value::Number(a * b)),
+                TokenKind::Slash => Ok(Value::Number(a / b)),
+                TokenKind::Minus => Ok(Value::Number(a - b)),
+                TokenKind::GreaterEqual => Ok(Value::Boolean(a >= b)),
+                TokenKind::LessEqual => Ok(Value::Boolean(a <= b)),
+                TokenKind::Less => Ok(Value::Boolean(a < b)),
+                TokenKind::Greater => Ok(Value::Boolean(a > b)),
+                _ => Err(()),
+            },
+            _ => {
+                crate::lox_error(
+                    node.token().line(),
+                    "arithmatic operators can only be used on numbers",
+                );
+                Err(())
+            }
+        }
+    }
+    fn visit_and(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().visit(self)?;
+        if !left.truth() {
+            return Ok(Value::Boolean(false));
+        }
+        node.rexpr().visit(self)
+    }
+    fn visit_or(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
+        let left = node.lexpr().visit(self)?;
+        if left.truth() {
+            return Ok(Value::Boolean(true));
+        }
+        node.rexpr().visit(self)
+    }
 }
 
 impl NodeVisitor for Interpretor {
@@ -169,54 +217,6 @@ impl NodeVisitor for Interpretor {
                 }
             }
         }
-    }
-    fn visit_plus(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
-            (Value::Number(a), Value::Number(b)) => Ok(Value::Number(a + b)),
-            (Value::String(a), Value::String(b)) => Ok(Value::String(format!("{}{}", a, b))),
-            _ => {
-                crate::lox_error(
-                    node.token().line(),
-                    "operator '+' can only be used on 2 numbers or 2 strings",
-                );
-                Err(())
-            }
-        }
-    }
-    fn visit_math(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        match (node.lexpr().visit(self)?, node.rexpr().visit(self)?) {
-            (Value::Number(a), Value::Number(b)) => match node.token().kind() {
-                TokenKind::Star => Ok(Value::Number(a * b)),
-                TokenKind::Slash => Ok(Value::Number(a / b)),
-                TokenKind::Minus => Ok(Value::Number(a - b)),
-                TokenKind::GreaterEqual => Ok(Value::Boolean(a >= b)),
-                TokenKind::LessEqual => Ok(Value::Boolean(a <= b)),
-                TokenKind::Less => Ok(Value::Boolean(a < b)),
-                TokenKind::Greater => Ok(Value::Boolean(a > b)),
-                _ => Err(()),
-            },
-            _ => {
-                crate::lox_error(
-                    node.token().line(),
-                    "arithmatic operators can only be used on numbers",
-                );
-                Err(())
-            }
-        }
-    }
-    fn visit_and(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        let left = node.lexpr().visit(self)?;
-        if !left.truth() {
-            return Ok(Value::Boolean(false));
-        }
-        node.rexpr().visit(self)
-    }
-    fn visit_or(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
-        let left = node.lexpr().visit(self)?;
-        if left.truth() {
-            return Ok(Value::Boolean(true));
-        }
-        node.rexpr().visit(self)
     }
     fn visit_binary(&mut self, node: &BinaryExpr) -> Result<Value, ()> {
         match node.token().kind() {
